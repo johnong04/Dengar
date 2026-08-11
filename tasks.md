@@ -4,7 +4,7 @@
 
 - [x] 01 shell + tokens (smoke)
 - [x] 02 capture screen (hard · board a-capture)
-- [ ] 03 abstain results ×3 (hard · board a-abstain)
+- [x] 03 abstain results ×3 (hard · board a-abstain)
 - [ ] 04 detected result drench (hard · board c-detected)
 - [ ] 05 history (smoke)
 - [ ] 06 onboarding + mic permission (smoke)
