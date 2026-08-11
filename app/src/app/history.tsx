@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SyncChip } from '@/components/SyncChip';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { type Detection, useDetections } from '@/store/detections';
 
@@ -156,9 +157,10 @@ export default function History() {
           >
             <Text className="font-plex-medium text-[15px] text-muted">← History</Text>
           </Pressable>
-          <Text className="font-mono text-[12px] text-muted">
-            {ordered.length} recorded
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <SyncChip />
+            <Text className="font-mono text-[12px] text-muted">{ordered.length} recorded</Text>
+          </View>
         </View>
 
         {ordered.length === 0 ? (

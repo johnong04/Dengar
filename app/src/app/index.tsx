@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LevelMeter } from '@/components/LevelMeter';
 import { PulseRings } from '@/components/PulseRings';
+import { SyncChip } from '@/components/SyncChip';
 import { classify } from '@/inference/classify';
 import type { Verdict } from '@/inference/gating';
 import { createLevelSource, type LevelSource } from '@/lib/audioLevel';
+import { useConnectivity } from '@/lib/connectivity';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { useDetections } from '@/store/detections';
 import { isOnboarded } from '@/store/onboarding';
@@ -36,6 +38,7 @@ export default function Capture() {
   const [source, setSource] = useState<LevelSource | null>(null);
   const reducedMotion = useReducedMotion();
   const detections = useDetections();
+  const online = useConnectivity();
 
   // Session token: bumping it invalidates every async continuation of the previous session
   // (level-source resolution, classify result). This is what makes cancel and double-press safe.
@@ -120,6 +123,10 @@ export default function Capture() {
 
   const listening = phase === 'listening';
   const analyzing = phase === 'analyzing';
+  // The sync chip and the full mic label do not both fit at 390 px (horizontal-scroll floor).
+  // While the chip is up, the label compresses to the trust half — the dot still carries mic state.
+  const chipUp = !online || queued > 0;
+  const micLabel = chipUp ? 'on-device' : listening ? 'recording · on-device' : 'mic ready · on-device';
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   // Dark ground only while the redirect to /onboarding lands (all hooks above have run).
@@ -128,14 +135,13 @@ export default function Capture() {
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-5">
-        {/* status row */}
-        <View className="flex-row items-center justify-between pt-4">
+        {/* status row — fixed height so the sync chip appearing/disappearing never shifts layout */}
+        <View className="mt-4 h-8 flex-row items-center justify-between">
           <Text className="font-plex-semibold text-[15px] text-ink">Dengar</Text>
           <View className="flex-row items-center gap-2">
+            <SyncChip />
             <View className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : 'bg-ok'}`} />
-            <Text className="font-mono text-[12px] text-muted">
-              {listening ? 'recording · on-device' : 'mic ready · on-device'}
-            </Text>
+            <Text className="font-mono text-[12px] text-muted">{micLabel}</Text>
           </View>
         </View>
 

@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react';
 
 import type { Species, SpeciesDetail } from '@/inference/gating';
+import { isOnline, subscribeConnectivity } from '@/lib/connectivity';
 
 export type Detection = {
   id: string;
@@ -56,11 +57,41 @@ export function list(): readonly Detection[] {
 export function add(detection: Detection): void {
   detections = [detection, ...detections];
   emit();
+  scheduleSync(); // a detection logged while online drains to the backend shortly
 }
 
 export function pendingSyncCount(): number {
   return detections.filter((d) => !d.synced).length;
 }
+
+// Fake sync (ponytail: real uploader swaps in behind scheduleSync at the next native build).
+// One timer; runs only while online with a queue. Offline cancels it — nothing is lost, the
+// queue just waits for the next online flip.
+const SYNC_MS = 3000;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSync(): void {
+  if (syncTimer !== null || !isOnline() || pendingSyncCount() === 0) return;
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    if (!isOnline()) return; // flipped offline between schedule and fire
+    detections = detections.map((d) => (d.synced ? d : { ...d, synced: true }));
+    emit();
+  }, SYNC_MS);
+}
+
+function cancelSync(): void {
+  if (syncTimer !== null) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+}
+
+subscribeConnectivity(() => {
+  if (isOnline()) scheduleSync();
+  else cancelSync();
+});
+scheduleSync(); // app may open online with a queue from a previous offline session
 
 export function clearAll(): void {
   detections = [];
