@@ -2,7 +2,7 @@
 
 ## Run: v1-citizen (overnight 2026-08-12, hack rigor, branch john-v1-citizen)
 
-- [ ] 01 shell + tokens (smoke)
+- [x] 01 shell + tokens (smoke)
 - [ ] 02 capture screen (hard · board a-capture)
 - [ ] 03 abstain results ×3 (hard · board a-abstain)
 - [ ] 04 detected result drench (hard · board c-detected)
