@@ -1,0 +1,43 @@
+# node / expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+.env
+.env.local
+
+# eas
+android/
+ios/
+
+# python / ml
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ml/cache/
+*.npy
+
+# models are build outputs, not source — except the two shipped ones
+*.tflite
+!app/assets/models/med.tflite
+!app/assets/models/msc.tflite
+
+# loop-eng
+.claude/loop-eng-profile.md
+CLAUDE.local.md
+docs/loop-eng/handoff.md
+
+# third-party inspiration screenshots — not ours to redistribute, and 3.8 MB of dead weight in the
+# clone Colab pulls for ml/. docs/design/design-system.md is the committed artifact, not these.
+docs/design/inspiration/
+
+# playwright-cli scratch
+.playwright-cli/
+*-proof.png
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
