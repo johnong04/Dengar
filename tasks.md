@@ -7,7 +7,7 @@
 - [x] 03 abstain results ×3 (hard · board a-abstain)
 - [x] 04 detected result drench (hard · board c-detected)
 - [x] 05 history (smoke)
-- [ ] 06 onboarding + mic permission (smoke)
+- [x] 06 onboarding + mic permission (smoke)
 - [ ] 07 offline indicator (smoke)
 - [ ] 08 critique + polish pass (hard)
 
