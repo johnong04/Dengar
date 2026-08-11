@@ -18,7 +18,27 @@ module.exports = {
         'inter-semibold': 'Inter_600SemiBold',
         'inter-bold': 'Inter_700Bold',
       },
-      // Color tokens land after the board is gated (docs/design/design-system.md is draft until then).
+      // Dark-ground citizen palette — docs/design/design-system.md is law for these values.
+      // Board screens under src/app/board/* are frozen artifacts and keep their raw hex.
+      colors: {
+        bg: '#0B0C0E',
+        surface: '#141619',
+        line: '#26292E',
+        ink: '#E9ECEF',
+        muted: '#9AA3AD',
+        faint: '#5C646E',
+        primary: '#4C9FE0',
+        alert: '#FF5C49',
+        ok: '#35B981',
+        caution: '#E8B44C',
+        'verdict-aedes': '#7E1B10',
+        'verdict-aedes-soft': '#F3C7C0',
+        'verdict-aedes-line': '#9E3D30',
+        'verdict-quiet': '#1A2030',
+        'verdict-quiet-soft': '#B8C1D4',
+        'verdict-quiet-muted': '#9FA9BF',
+        'verdict-quiet-line': '#333D52',
+      },
     },
   },
   plugins: [],
