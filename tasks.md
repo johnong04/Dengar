@@ -8,7 +8,7 @@
 - [x] 04 detected result drench (hard · board c-detected)
 - [x] 05 history (smoke)
 - [x] 06 onboarding + mic permission (smoke)
-- [ ] 07 offline indicator (smoke)
+- [x] 07 offline indicator (smoke)
 - [ ] 08 critique + polish pass (hard)
 
 ## Later (not this run)
