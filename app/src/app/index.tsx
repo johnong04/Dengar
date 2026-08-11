@@ -126,7 +126,13 @@ export default function Capture() {
   // The sync chip and the full mic label do not both fit at 390 px (horizontal-scroll floor).
   // While the chip is up, the label compresses to the trust half — the dot still carries mic state.
   const chipUp = !online || queued > 0;
-  const micLabel = chipUp ? 'on-device' : listening ? 'recording · on-device' : 'mic ready · on-device';
+  const micLabel = chipUp
+    ? 'on-device'
+    : listening
+      ? 'recording · on-device'
+      : analyzing
+        ? 'analyzing · on-device'
+        : 'mic ready · on-device';
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   // Dark ground only while the redirect to /onboarding lands (all hooks above have run).
@@ -140,7 +146,10 @@ export default function Capture() {
           <Text className="font-plex-semibold text-[15px] text-ink">Dengar</Text>
           <View className="flex-row items-center gap-2">
             <SyncChip />
-            <View className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : 'bg-ok'}`} />
+            {/* mic state: blue = live, muted = closed (analyzing), green = ready */}
+            <View
+              className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : analyzing ? 'bg-muted' : 'bg-ok'}`}
+            />
             <Text className="font-mono text-[12px] text-muted">{micLabel}</Text>
           </View>
         </View>
@@ -148,7 +157,7 @@ export default function Capture() {
         {/* instrument */}
         <View className="flex-1 items-center justify-center">
           <PulseRings
-            mode={listening || analyzing ? 'listening' : 'idle'}
+            mode={phase}
             reducedMotion={reducedMotion}
             onPress={start}
             disabled={phase !== 'idle'}
@@ -183,7 +192,7 @@ export default function Capture() {
 
           {phase === 'idle' && (
             <Animated.View entering={enter} className="items-center">
-              <Text className="mt-10 text-center font-plex-semibold text-[24px] leading-8 text-ink">
+              <Text className="mt-8 text-center font-plex-semibold text-[24px] leading-8 text-ink">
                 Identify the mosquito{'\n'}that found you
               </Text>
               <Text className="mt-3 text-center font-plex text-[15px] leading-[22px] text-muted">
@@ -193,7 +202,7 @@ export default function Capture() {
           )}
           {listening && (
             <Animated.View entering={enter} className="items-center">
-              <Text className="mt-10 text-center font-plex text-[15px] leading-[22px] text-muted">
+              <Text className="mt-8 text-center font-plex text-[15px] leading-[22px] text-muted">
                 Hold your phone within 10 cm.{'\n'}Trapped under a glass works best.
               </Text>
               <Pressable

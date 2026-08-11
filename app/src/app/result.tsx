@@ -233,13 +233,13 @@ function Detected({
               </View>
 
               {/* verdict */}
-              <View className="mt-14">
+              <View className="mt-12">
                 <Text className="font-plex-bold text-[56px] leading-[60px] text-white">Aedes.</Text>
                 <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
                   The mosquito that found you{'\n'}carries dengue.
                 </Text>
 
-                <View className="mt-10 flex-row items-baseline gap-3">
+                <View className="mt-8 flex-row items-baseline gap-3">
                   <Text className="font-mono-medium text-[30px] text-white">{pct}%</Text>
                   <Text className="font-mono text-[13px] text-verdict-aedes-soft">{context}</Text>
                 </View>
@@ -249,7 +249,7 @@ function Detected({
 
                 {/* fine-grained heads — rows exist only when a head reported (specs.md §6) */}
                 {rows.length > 0 && (
-                  <View className="mt-10">
+                  <View className="mt-8">
                     {rows.map((row, i) => (
                       <View
                         key={row.label}
@@ -271,7 +271,7 @@ function Detected({
                   </View>
                 )}
 
-                <Text className="mt-10 font-plex text-[15px] leading-[22px] text-verdict-aedes-soft">
+                <Text className="mt-8 font-plex text-[15px] leading-[22px] text-verdict-aedes-soft">
                   Logging this puts one more point on your district's map. Fourteen detections in 72
                   hours is what sends a fogging truck.
                 </Text>
@@ -309,7 +309,8 @@ function Detected({
     );
   }
 
-  // not_aedes (and the honest fallback for a garbled species param): quiet ground, never red.
+  // not_aedes: quiet ground, never red. (Garbled species never reaches here — Result() routes it
+  // to the abstain fallback.)
   const quietRows: ReadoutRow[] = [
     {
       label: 'Species call',
@@ -416,7 +417,10 @@ export default function Result() {
   const reducedMotion = useReducedMotion();
   const stamp = useCaptureStamp();
 
-  if (params.kind === 'detected')
+  // A detected verdict must name a species the instrument can stand behind. A garbled species
+  // param (hand-typed URL) falls through to the no_mosquito abstain with honest dashes — the
+  // not_aedes layout would falsely claim "the wingbeat was clear enough to judge".
+  if (params.kind === 'detected' && (params.species === 'aedes' || params.species === 'not_aedes'))
     return <Detected params={params} reducedMotion={reducedMotion} stamp={stamp} />;
 
   const reason = (params.reason ?? 'no_mosquito') as AbstainReason;

@@ -14,11 +14,13 @@ import Animated, {
  * The Listen instrument: the board's 3-ring geometry (264 / 224 / 184) with the design-system
  * breathing pulse. Two phase-offset primary rings scale 1→1.12 and fade 0.35→0 over 1.6 s while
  * idle; listening tightens the loop (0.9 s, 1→1.06) — faster and smaller reads as "live".
+ * Analyzing: the mic is closed, so the live-mic pulse stops — rings hold static while the center
+ * copy carries the state.
  *
- * Reduced motion: no scale at all — a single static ring shifts opacity slowly instead.
+ * Reduced motion: no animation at all — a single static primary ring at rest opacity.
  */
 type Props = {
-  mode: 'idle' | 'listening';
+  mode: 'idle' | 'listening' | 'analyzing';
   reducedMotion: boolean;
   onPress?: () => void;
   disabled?: boolean;
@@ -39,44 +41,35 @@ export function PulseRings({
   const tight = mode === 'listening';
   const duration = tight ? 900 : 1600;
   const scaleTo = tight ? 1.06 : 1.12;
+  // Idle breathes (invitation), listening tightens (live mic). Analyzing pulses nothing: the mic
+  // is closed, and a moving ring over "reading wingbeat" would claim a liveness that isn't there.
+  const still = reducedMotion || mode === 'analyzing';
 
   const p1 = useSharedValue(0);
   const p2 = useSharedValue(0);
-  const dim = useSharedValue(0.35);
 
   useEffect(() => {
     cancelAnimation(p1);
     cancelAnimation(p2);
-    cancelAnimation(dim);
-    if (reducedMotion) {
-      p1.value = 0;
-      p2.value = 0;
-      dim.value = 0.35;
-      dim.value = withRepeat(
-        withTiming(0.12, { duration: 2400, easing: Easing.inOut(Easing.quad) }),
-        -1,
-        true,
-      );
-      return;
-    }
-    const pulse = () =>
-      withRepeat(withTiming(1, { duration, easing: Easing.out(Easing.cubic) }), -1, false);
     p1.value = 0;
     p2.value = 0;
+    if (still) return;
+    const pulse = () =>
+      withRepeat(withTiming(1, { duration, easing: Easing.out(Easing.cubic) }), -1, false);
     p1.value = pulse();
     p2.value = withDelay(duration / 2, pulse());
-  }, [duration, reducedMotion, p1, p2, dim]);
+  }, [duration, still, p1, p2]);
 
   const ring1 = useAnimatedStyle(() =>
-    reducedMotion
-      ? { opacity: dim.value, transform: [{ scale: 1 }] }
+    still
+      ? { opacity: 0.35, transform: [{ scale: 1 }] }
       : {
           opacity: 0.35 * (1 - p1.value),
           transform: [{ scale: 1 + (scaleTo - 1) * p1.value }],
         },
   );
   const ring2 = useAnimatedStyle(() =>
-    reducedMotion
+    still
       ? { opacity: 0 }
       : {
           opacity: 0.35 * (1 - p2.value),

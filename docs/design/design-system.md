@@ -1,9 +1,10 @@
 # Dengar design system
 
-Status: **DRAFT — board not yet gated.** Three directions built from these tokens; John picks at
-`docs/design/board/`. After the gate, the losing directions' deltas are deleted from this file and
-the winner's values become law. Every screen extends this file; inventing a parallel scale is a
-defect even if the screen looks fine alone.
+Status: **GATED — LAW (John, 2026-08-12).** Board decided: **A (Field Instrument) capture + abstain,
+C (Verdict) red drench for the Aedes result.** The citizen surface is the dark instrument system;
+red drenches only a positive Aedes verdict. Losing-direction deltas are deleted from this file.
+The officer light-ground column stays — that surface is v2, not dead. Every screen extends this
+file; inventing a parallel scale is a defect even if the screen looks fine alone.
 
 ## The one sentence that forces every choice
 
@@ -30,7 +31,7 @@ Two audiences → two surfaces, deliberately distinct (specs.md §5):
   state. It is the most-seen screen and the trust surface (specs.md §4).
 - specs.md §2 language table is binding on every string.
 
-## Tokens (shared spine — all directions draw from these)
+## Tokens (the shared spine — law, mirrored in `app/tailwind.config.js`)
 
 ### Color
 
@@ -51,40 +52,59 @@ Seed: oklch(0.35 0.078 240) — deep harbor blue. Primary hue stays 240±10 in e
 Semantics: **aedes-red is reserved for a positive Aedes verdict and officer alerts.** Never for
 errors, never decoration. Abstain uses ink/muted on the normal ground — a quiet answer, not a warning.
 
+#### Verdict drench family (added 2026-08-12 — doc catches up to `tailwind.config.js`, slice 4)
+
+The C-direction drench, as built: the Aedes result surface IS the verdict color. White ink on the
+drench; `-soft` for secondary text (AA on the drench, measured 6.7:1); `-line` for hairlines and
+the confidence track. The quiet family is reserved for a possible abstain drench — defined in the
+config, unused in v1 (v1 abstains sit on the normal dark ground).
+
+| Token | Value | Use |
+|---|---|---|
+| `verdict-aedes` | `#7E1B10` | Aedes result ground (the only red-drenched surface) |
+| `verdict-aedes-soft` | `#F3C7C0` | secondary text on the drench |
+| `verdict-aedes-line` | `#9E3D30` | hairlines / track on the drench |
+| `verdict-quiet` | `#1A2030` | reserved (abstain drench, unused v1) |
+| `verdict-quiet-soft` | `#B8C1D4` | reserved |
+| `verdict-quiet-muted` | `#9FA9BF` | reserved |
+| `verdict-quiet-line` | `#333D52` | reserved |
+
+Also in config, undocumented until now: `faint #5C646E` (sub-muted, decorative only — below AA,
+never for copy).
+
 ### Type
 
 - Citizen + shared: **IBM Plex Sans** (400/500/600/700) — institutional-scientific without being cold.
 - Data readouts (confidence, dB, coords, timestamps): **IBM Plex Mono** — instrument credibility,
   tabular by nature.
-- Officer alternative in board direction B: **Inter** — denser x-height for tables.
 - Scale (px): 12 · 13 · 15 · 17 · 20 · 24 · 30 · 38 · 56(verdict number only)
 - Verdict number is the only thing allowed above 38.
 
 ### Space & shape
 
 - Base 4: 4 8 12 16 24 32 48 64. Screen gutter 20.
-- Radius: control 10 · sheet 20 · pill 999. One radius vocabulary per direction, no mixing.
+- Radius: control 10 · sheet 20 · pill 999. One radius vocabulary per surface, no mixing.
 - Hairlines 1px `line`. No shadows on dark ground; light ground max `0 1px 3px rgba(21,24,29,.08)`.
 
 ### Motion
 
 - State transitions 180 ms ease-out. Verdict reveal 240 ms.
-- Capture pulse: 1.6 s breathing ring, scale 1→1.12, opacity .35→0, loops while listening. The one
-  ambient animation in the app; earned because it communicates "live mic".
-- Reduced motion: ring becomes a static level meter; reveals become crossfades.
+- Capture pulse (as built, slice 2 — recorded 2026-08-12): the one ambient animation in the app.
+  Idle breathes at 1.6 s (scale 1→1.12, opacity .35→0 — the invitation); listening tightens to
+  0.9 s, 1→1.06 — faster and smaller reads as "live mic". Analyzing holds the rings still: the mic
+  is closed, so nothing on screen may claim liveness.
+- Reduced motion: rings hold static (single ring at rest opacity); the level meter still moves —
+  it is data, not decoration. Reveals become crossfades.
 
-## The three board directions
+## Gate record (2026-08-12)
 
-Same spine, different commitment. Built as real screens at `/board/*`.
-
-- **A — Field Instrument** (restrained, dark): hairlines, mono data, SNR readout as honest hardware.
-  Wager: judges trust an instrument more than an app.
-- **B — Public Clinic** (restrained, light): white + cobalt, MOH-adjacent institutional trust, Inter.
-  Wager: familiarity reads as deployable-tomorrow, and the officer/citizen split is typographic
-  rather than dark/light.
-- **C — Verdict** (committed→drenched): capture is near-black and typographic ("Dengar." is the
-  button); **the result surface IS the verdict color** — aedes drenches red, abstain drenches deep
-  indigo-grey. Wager: the strongest possible video frame; one screen = one answer.
+Three directions were built as real screens at `/board/*` (frozen artifacts — raw hex, not tokens).
+John gated: **A — Field Instrument** for capture and abstain (hairlines, mono data, SNR readout as
+honest hardware), **C — Verdict** for the Aedes result (the surface IS the verdict color — red
+drench, one screen = one answer). B (Public Clinic, light + Inter) lost; its officer wager returns
+as the v2 officer surface, tracked in the light-ground column above. v1 abstains stay on the quiet
+dark ground rather than C's indigo drench — refusal reads as the instrument at rest, not a second
+verdict color.
 
 ## Rubric axes (the taste half of the loop oracle; floors live in loop-eng-profile)
 
