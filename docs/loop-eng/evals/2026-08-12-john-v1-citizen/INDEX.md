@@ -6,3 +6,4 @@ One line per finding: real | noise — source — what.
 - noise — slice3-eval F3 (INFO) — reduced-motion first-frame relies on reanimated auto-disable; measured correct. Do not demand a custom guard.
 - noise — slice2-eval F1 (minor) — reanimated kill-switch makes bespoke reduced-motion opacity loops dead code; the static fallback is the sanctioned behavior, not a defect.
 - real — slice3 fix1 verified — readings fix landed red-first; re-verdict PASS. Runnable case: gating.check.ts abstain readings asserts (the red test itself).
+- noise — slice4-eval F3 (INFO) — "fourteen detections/72h" flagged as modeled-as-fact; it is plan copy from specs §8's declared-simulation scenario. Narration owns the honesty, not the screen. Do not demand a citation chip in-app.
