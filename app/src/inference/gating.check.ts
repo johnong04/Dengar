@@ -31,18 +31,36 @@ assert.deepEqual(judge(clip({ mscScores: [0.1, 0.9] })), {
   confidence: 0.9,
 });
 
-// the three abstains
-assert.deepEqual(judge(clip({ medScore: 0.49 })), { kind: 'abstain', reason: 'no_mosquito' });
+// the three abstains — each carries the measured numbers it was judged on (readings), populated
+// per veto order: too_noisy vetoes before MED runs, so it carries no medScore.
+assert.deepEqual(judge(clip({ medScore: 0.49 })), {
+  kind: 'abstain',
+  reason: 'no_mosquito',
+  readings: { medScore: 0.49, bandSnrDb: 20 },
+});
 assert.deepEqual(judge(clip({ mscScores: [0.69, 0.31] })), {
   kind: 'abstain',
   reason: 'not_confident',
+  readings: { medScore: 0.9, mscMax: 0.69, bandSnrDb: 20 },
 });
-assert.deepEqual(judge(clip({ bandSnrDb: 5 })), { kind: 'abstain', reason: 'too_noisy' });
+assert.deepEqual(judge(clip({ bandSnrDb: 5 })), {
+  kind: 'abstain',
+  reason: 'too_noisy',
+  readings: { bandSnrDb: 5 },
+});
+
+// MED passed but MSC never ran (head absent) — reported as no_mosquito, readings show what was judged
+assert.deepEqual(judge(clip({ mscScores: undefined })), {
+  kind: 'abstain',
+  reason: 'no_mosquito',
+  readings: { medScore: 0.9, bandSnrDb: 20 },
+});
 
 // noise vetoes a confident score — the whole reason SNR is checked first
 assert.deepEqual(judge(clip({ medScore: 0.99, mscScores: [0.99, 0.01], bandSnrDb: 0 })), {
   kind: 'abstain',
   reason: 'too_noisy',
+  readings: { bandSnrDb: 0 },
 });
 
 // boundaries are inclusive: exactly at threshold passes
@@ -63,6 +81,10 @@ assert.equal('detail' in judge(clip({})), false);
 assert.deepEqual(judge(clip({ bandSnrDb: 0, detail: { sex: { value: 'female', confidence: 0.99 } } })), {
   kind: 'abstain',
   reason: 'too_noisy',
+  readings: { bandSnrDb: 0 },
 });
+
+// detected verdicts carry NO readings — slice 4 consumes this shape unchanged
+assert.equal('readings' in judge(clip({})), false);
 
 console.log('gating: ok');

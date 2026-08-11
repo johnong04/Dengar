@@ -19,7 +19,8 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 type Phase = 'idle' | 'listening' | 'analyzing';
 
 function serialize(v: Verdict): Record<string, string> {
-  if (v.kind === 'abstain') return { kind: v.kind, reason: v.reason };
+  if (v.kind === 'abstain')
+    return { kind: v.kind, reason: v.reason, readings: JSON.stringify(v.readings) };
   return {
     kind: v.kind,
     species: v.species,

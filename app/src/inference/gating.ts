@@ -37,12 +37,30 @@ export type RawInference = {
 };
 
 /**
+ * The measured numbers an abstain was judged on, populated per veto order — a gate that never ran
+ * contributes nothing (too_noisy vetoes before MED, so it carries no medScore). This is what lets
+ * the result screen show honest readouts instead of invented ones.
+ */
+export type AbstainReadings = {
+  /** Absent when the SNR veto fired before MED was judged. */
+  medScore?: number;
+  /** max(mscScores) — present only when MSC actually ran (not_confident). */
+  mscMax?: number;
+  /** Always measured; the first gate. */
+  bandSnrDb: number;
+};
+
+/**
  * Abstain is the majority outcome, not an error (specs.md §4). Three distinct reasons, because the
  * user's next action differs: nothing there / get closer / go somewhere quieter.
  */
 export type Verdict =
   | { kind: 'detected'; species: Species; confidence: number; detail?: SpeciesDetail }
-  | { kind: 'abstain'; reason: 'no_mosquito' | 'not_confident' | 'too_noisy' };
+  | {
+      kind: 'abstain';
+      reason: 'no_mosquito' | 'not_confident' | 'too_noisy';
+      readings: AbstainReadings;
+    };
 
 export const MED_THRESHOLD = 0.5;
 export const MSC_THRESHOLD = 0.7;
@@ -52,15 +70,31 @@ export const BAND_SNR_FLOOR_DB = 6;
 export function judge(raw: RawInference): Verdict {
   // Noise first: a confident-looking score on an unusable recording is the dangerous case, and
   // outdoor accuracy drops to 67.3%, so the SNR floor must be able to veto a high MSC score.
-  if (raw.bandSnrDb < BAND_SNR_FLOOR_DB) return { kind: 'abstain', reason: 'too_noisy' };
-  if (raw.medScore < MED_THRESHOLD) return { kind: 'abstain', reason: 'no_mosquito' };
+  if (raw.bandSnrDb < BAND_SNR_FLOOR_DB)
+    return { kind: 'abstain', reason: 'too_noisy', readings: { bandSnrDb: raw.bandSnrDb } };
+  if (raw.medScore < MED_THRESHOLD)
+    return {
+      kind: 'abstain',
+      reason: 'no_mosquito',
+      readings: { medScore: raw.medScore, bandSnrDb: raw.bandSnrDb },
+    };
 
   const scores = raw.mscScores;
-  if (!scores) return { kind: 'abstain', reason: 'no_mosquito' };
+  if (!scores)
+    return {
+      kind: 'abstain',
+      reason: 'no_mosquito',
+      readings: { medScore: raw.medScore, bandSnrDb: raw.bandSnrDb },
+    };
 
   const [aedes, notAedes] = scores;
   const confidence = Math.max(aedes, notAedes);
-  if (confidence < MSC_THRESHOLD) return { kind: 'abstain', reason: 'not_confident' };
+  if (confidence < MSC_THRESHOLD)
+    return {
+      kind: 'abstain',
+      reason: 'not_confident',
+      readings: { medScore: raw.medScore, mscMax: confidence, bandSnrDb: raw.bandSnrDb },
+    };
 
   // detail is passed through untouched and never gates. A low-confidence sex head must not be able
   // to suppress a solid Aedes detection — the fogging decision depends only on the bucket.

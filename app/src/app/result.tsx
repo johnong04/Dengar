@@ -4,7 +4,12 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BAND_SNR_FLOOR_DB, MED_THRESHOLD, MSC_THRESHOLD } from '@/inference/gating';
+import {
+  type AbstainReadings,
+  BAND_SNR_FLOOR_DB,
+  MED_THRESHOLD,
+  MSC_THRESHOLD,
+} from '@/inference/gating';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 type AbstainReason = 'no_mosquito' | 'not_confident' | 'too_noisy';
@@ -22,57 +27,76 @@ type ReadoutRow = {
 type AbstainCopy = {
   headline: string;
   body: string;
-  rows: ReadoutRow[];
+  rows: (r: AbstainReadings) => ReadoutRow[];
   guidance: string;
 };
 
-// Readout values are seeded display values: classify() returns only the Verdict, so the raw
-// MED/MSC/SNR numbers never reach this screen. Floors are real (imported from gating.ts);
-// the scores are plausible instrument readings consistent with each gate's veto order.
-// ponytail: when the pipeline exposes RawInference alongside the Verdict, serialize
-// medScore/mscScores/bandSnrDb through the route params and delete this map.
+// Readout values come from judge()'s AbstainReadings, serialized through the route params by the
+// capture screen — the numbers the gates actually measured, absent when a gate never ran.
+const score = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? n.toFixed(2) : '—');
+const db = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? `${n.toFixed(1)} dB` : '—');
+const AUDIO_ROW: ReadoutRow = { label: 'Audio kept', value: 'no', suffix: '· deleted on device' };
+
 const ABSTAIN_COPY: Record<AbstainReason, AbstainCopy> = {
   no_mosquito: {
     headline: 'No mosquito\nin this recording',
     body: "The clip carried no wingbeat signature. Most recordings end here — a clean no is what keeps the map honest. Nothing was saved; nothing left your phone.",
-    rows: [
-      { label: 'Event score', value: '0.21', suffix: `/ floor ${MED_THRESHOLD.toFixed(2)}` },
-      { label: 'Band SNR', value: '11.8 dB', suffix: '· usable' },
-      { label: 'Audio kept', value: 'no', suffix: '· deleted on device' },
+    rows: (r) => [
+      { label: 'Event score', value: score(r.medScore), suffix: `/ floor ${MED_THRESHOLD.toFixed(2)}` },
+      {
+        label: 'Band SNR',
+        value: db(r.bandSnrDb),
+        suffix: r.bandSnrDb >= BAND_SNR_FLOOR_DB ? '· usable' : undefined,
+      },
+      AUDIO_ROW,
     ],
     guidance: 'Get within 10 cm — under a glass is ideal',
   },
   not_confident: {
     headline: 'Wingbeat heard —\nspecies unresolved',
     body: "A mosquito was close enough to hear, but the species call didn't clear its floor. This is the one worth retrying — inside 10 cm the signature sharpens fast.",
-    rows: [
-      { label: 'Event score', value: '0.84', suffix: '· passed' },
+    rows: (r) => [
+      { label: 'Event score', value: score(r.medScore), suffix: '· passed' },
       {
         label: 'Species call',
-        value: '0.55',
+        value: score(r.mscMax),
         suffix: `/ floor ${MSC_THRESHOLD.toFixed(2)}`,
         prominent: true,
       },
-      { label: 'Audio kept', value: 'no', suffix: '· deleted on device' },
+      AUDIO_ROW,
     ],
     guidance: 'Get closer — hold within 10 cm — and listen again',
   },
   too_noisy: {
     headline: 'Too loud here\nto hear a wingbeat',
     body: 'Background sound drowned the wingbeat band before the models could judge it. Refusing beats guessing — a wrong call here would put bad data on the map.',
-    rows: [
+    rows: (r) => [
       {
         label: 'Band SNR',
-        value: '2.1 dB',
+        value: db(r.bandSnrDb),
         suffix: `/ floor ${BAND_SNR_FLOOR_DB} dB`,
         prominent: true,
       },
-      { label: 'Event score', value: '—', suffix: '· not judged' },
-      { label: 'Audio kept', value: 'no', suffix: '· deleted on device' },
+      { label: 'Event score', value: score(r.medScore), suffix: '· not judged' },
+      AUDIO_ROW,
     ],
     guidance: 'Move away from the fan, traffic or TV, then listen again',
   },
 };
+
+/** Route param → readings. Absent/garbled param (direct URL) renders honest dashes, never invents. */
+function parseReadings(param: string | undefined): AbstainReadings {
+  if (param) {
+    try {
+      const parsed = JSON.parse(param) as Partial<AbstainReadings>;
+      if (typeof parsed === 'object' && parsed !== null)
+        return { bandSnrDb: NaN, ...parsed } as AbstainReadings;
+    } catch {
+      // fall through to the empty reading set
+    }
+  }
+  return { bandSnrDb: NaN };
+}
 
 function backToCapture() {
   if (router.canGoBack()) router.back();
@@ -92,7 +116,7 @@ function useCaptureStamp(): string {
 }
 
 export default function Result() {
-  const params = useLocalSearchParams<{ kind?: string; reason?: string }>();
+  const params = useLocalSearchParams<{ kind?: string; reason?: string; readings?: string }>();
   const reducedMotion = useReducedMotion();
   const stamp = useCaptureStamp();
 
@@ -108,6 +132,7 @@ export default function Result() {
 
   const reason = (params.reason ?? 'no_mosquito') as AbstainReason;
   const copy = ABSTAIN_COPY[reason] ?? ABSTAIN_COPY.no_mosquito;
+  const rows = copy.rows(parseReadings(params.readings));
   // Verdict reveal: 240 ms fade. Under prefers-reduced-motion the entering animation is dropped
   // (reanimated also auto-disables it) — the screen appears as a plain crossfade-equivalent cut.
   const reveal = reducedMotion ? undefined : FadeIn.duration(240);
@@ -131,7 +156,7 @@ export default function Result() {
         {/* explicit flex style: className flex-1 is not applied reliably on reanimated views (web) */}
         <Animated.View entering={reveal} style={{ flex: 1 }}>
           {/* verdict */}
-          <View className="mt-14">
+          <View className="mt-12">
             <Text className="font-plex-bold text-[38px] leading-[44px] text-ink">
               {copy.headline}
             </Text>
@@ -139,12 +164,12 @@ export default function Result() {
           </View>
 
           {/* the instrument says why, in its own units */}
-          <View className="mt-10">
-            {copy.rows.map((row, i) => (
+          <View className="mt-12">
+            {rows.map((row, i) => (
               <View
                 key={row.label}
-                className={`flex-row items-center justify-between border-t border-line py-3.5 ${
-                  i === copy.rows.length - 1 ? 'border-b' : ''
+                className={`flex-row items-center justify-between border-t border-line py-3 ${
+                  i === rows.length - 1 ? 'border-b' : ''
                 }`}
               >
                 <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
