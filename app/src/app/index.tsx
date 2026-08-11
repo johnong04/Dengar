@@ -11,6 +11,7 @@ import type { Verdict } from '@/inference/gating';
 import { createLevelSource, type LevelSource } from '@/lib/audioLevel';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { useDetections } from '@/store/detections';
+import { isOnboarded } from '@/store/onboarding';
 
 const CAPTURE_SECONDS = 5.0;
 const SAMPLE_RATE = 16000;
@@ -38,6 +39,13 @@ export default function Capture() {
 
   // Session token: bumping it invalidates every async continuation of the previous session
   // (level-source resolution, classify result). This is what makes cancel and double-press safe.
+  // First-run: read once, synchronously, before the first paint — no flash of capture, and the
+  // redirect can never loop because /onboarding sets the flag before replacing back here.
+  const [onboarded] = useState(() => isOnboarded());
+  useEffect(() => {
+    if (!onboarded) router.replace('/onboarding');
+  }, [onboarded]);
+
   const sessionRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sourceRef = useRef<LevelSource | null>(null);
@@ -113,6 +121,9 @@ export default function Capture() {
   const listening = phase === 'listening';
   const analyzing = phase === 'analyzing';
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
+
+  // Dark ground only while the redirect to /onboarding lands (all hooks above have run).
+  if (!onboarded) return <View className="flex-1 bg-bg" />;
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
