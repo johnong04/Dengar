@@ -117,7 +117,16 @@ export default function Onboarding() {
             <Pressable
               onPress={finish}
               accessibilityRole="button"
-              className="min-h-[44px] justify-center pl-4 active:opacity-70"
+              /* pl-6, not min-w: the row is justify-between and Skip is its last child, so a
+                 min-width grows RIGHTWARD past the screen gutter. Padding grows the hit box leftward
+                 into dead space instead, leaving the glyphs where they were. EN "Skip" is 30.1 px
+                 wide and failed the 44 px floor under pl-4; BM "Langkau" already passed. pl-6 also
+                 makes this identical to node/setup's dismiss, the other root-level screen.
+                 `pl-[30px]` and `pl-8` were tried first and both computed to 0 px: neither string
+                 appears anywhere else in the tree, so Tailwind's JIT never emitted them. On this
+                 setup a spacing class is only safe if the codebase already uses it — measure, do
+                 not assume the class compiled. */
+              className="min-h-[44px] justify-center pl-6 active:opacity-70"
             >
               <Text className="font-plex-medium text-[15px] text-muted">{c.onboarding.skip}</Text>
             </Pressable>

@@ -265,6 +265,10 @@ export const ledger: readonly LedgerRow[] = [
     math: `EUR ${CITED.ovitrapEurPerKm2Month} ÷ ${CITED.citizenEurPerKm2Month}`,
     result: `${(CITED.ovitrapEurPerKm2Month / CITED.citizenEurPerKm2Month).toFixed(1)}× (§9: ${CITED.ovitrapMultiple})`,
     note: 'input',
-    tag: 'cited',
+    // `modeled`, not `cited`. Both RATES are §9 verbatim, but the quotient printed here is our own
+    // division — and the screen's own legend defines [modeled] as exactly that: our arithmetic on
+    // cited figures, shown in full. Tagging our division `cited` would borrow §9's authority for a
+    // number §9 does not state (§9 says 8×; this row says 7.6× and names the 8× beside it).
+    tag: 'modeled',
   },
 ];

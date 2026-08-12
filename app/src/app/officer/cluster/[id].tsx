@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DirectiveRecord } from '@/components/DirectiveRecord';
@@ -98,13 +98,18 @@ function blocksCentre(blocks: readonly SurveyBlock[]): LatLon {
 function FloatLabel({
   at,
   viewportWidth,
-  below = false,
+  reserveTop = 0,
   className,
   children,
 }: {
   at: Point;
   viewportWidth: number;
-  below?: boolean;
+  /**
+   * Height of the reserved top band (legend / rain pill). The label flips BELOW its anchor when its
+   * own measured top edge would land inside that band. Anchor-based thresholds cannot do this: the
+   * label's height is what decides whether it clears, and that is only known after layout.
+   */
+  reserveTop?: number;
   className: string;
   children: React.ReactNode;
 }) {
@@ -115,14 +120,25 @@ function FloatLabel({
         viewportWidth - size.width - PILL_GUTTER,
       )
     : at.x;
-  const top = size ? (below ? at.y + 12 : at.y - size.height - 12) : at.y;
+  const above = size ? at.y - size.height - PILL_GUTTER : at.y;
+  const top = size ? (above < reserveTop ? at.y + PILL_GUTTER : above) : at.y;
+  /**
+   * When the acknowledged sheet grows, the map shrinks and every projected point lifts. The LRT
+   * anchor can end up INSIDE the reserved band, where neither placement clears it — flipping below
+   * an anchor that is itself under the rain pill just moves the collision 12 px down. In that one
+   * case the label yields: the rain figure is a sourced number (§9's +40 mm) and an orientation
+   * label is chrome, so chrome never occludes data. Hidden rather than unmounted, because
+   * unmounting discards the measurement and the component would oscillate.
+   */
+  const clears = !size || top >= reserveTop;
   return (
     <View
       onLayout={(e) =>
         setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
       }
+      pointerEvents="none"
       className={className}
-      style={{ position: 'absolute', left, top, opacity: size ? 1 : 0 }}
+      style={{ position: 'absolute', left, top, opacity: size && clears ? 1 : 0 }}
     >
       {children}
     </View>
@@ -139,6 +155,14 @@ export default function ClusterDetail() {
   const ack = useAcknowledgement();
   const [map, setMap] = useState<Size | null>(null);
   const [sheetH, setSheetH] = useState(SHEET_H_FALLBACK);
+  // Bottom edge of the reserved top band, measured off the chrome that occupies it (the legend on
+  // the left, the rain pill on the right). Monotonic max over both, so it converges after layout
+  // instead of oscillating, and it tracks whichever pill is actually taller in the current language.
+  const [topBand, setTopBand] = useState(PILL_GUTTER);
+  const measureTopBand = useCallback((e: LayoutChangeEvent) => {
+    const bottom = PILL_GUTTER + e.nativeEvent.layout.height;
+    setTopBand((b) => (bottom > b ? bottom : b));
+  }, []);
 
   const area = watchAreas.find((w) => w.id === id) ?? watchAreas[0];
   const hasCluster = activeCluster.id === area.id;
@@ -331,8 +355,10 @@ export default function ClusterDetail() {
                   /* Flip under the anchor when the label would otherwise sit in the top band, where
                      the legend and the rain pill live. The acknowledged sheet is taller than the
                      unsigned one, which shortens the visible map and lifts every projected point —
-                     a label is not allowed to collide with the readouts just because the sheet grew. */
-                  below={p.y < 64}
+                     a label is not allowed to collide with the readouts just because the sheet grew.
+                     The band is MEASURED off that chrome, not guessed: slice 15 used a hand-picked
+                     anchor threshold and the LRT pill still cut 39×9 px into the rain pill at 390. */
+                  reserveTop={topBand}
                   className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1"
                 >
                   <Text className="font-plex-medium text-[11px] text-o-muted">{l.name}</Text>
@@ -352,6 +378,7 @@ export default function ClusterDetail() {
 
             {/* legend — the counts are the same 14, split by band, so it is data and not a key */}
             <View
+              onLayout={measureTopBand}
               className="flex-row items-center gap-3 rounded-pill border border-o-line bg-o-bg px-2.5 py-1.5"
               style={{ position: 'absolute', left: PILL_GUTTER, top: PILL_GUTTER }}
             >
@@ -370,6 +397,7 @@ export default function ClusterDetail() {
             {/* rainfall over the same window — specs §9's sanctioned +40 mm, as a filled shape */}
             {hasCluster ? (
               <View
+                onLayout={measureTopBand}
                 className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1.5"
                 style={{ position: 'absolute', right: PILL_GUTTER, top: PILL_GUTTER }}
               >

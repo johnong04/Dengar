@@ -38,7 +38,10 @@ import {
 //     daylight map, and so the risk copy above it is what the eye lands on first
 //   · NO scale bar, NO legend pills, NO block IDs, NO per-detection dots. The officer needs the
 //     street a truck drives down; the citizen needs "raised, here, and here is what to do".
-//   · COARSE BY CONSTRUCTION: the finest thing this screen can draw is one ~170 m survey block,
+//   · COARSE BY CONSTRUCTION: the finest thing this screen can draw is one survey block — `BLOCK_M`,
+//     computed below off the projection and printed on screen (160 m today; the comment does not
+//     hand-type it, because a comment that disagrees with the rendered figure is how a false number
+//     gets inherited),
 //     tinted by how many detections fell inside it. Never a dot on someone's house — which is a
 //     privacy stance first and a talking point second, so the screen says it in words too.
 //
