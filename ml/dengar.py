@@ -36,7 +36,9 @@ META = "neurips_2021_zenodo_0_0_1.csv"
 # is what stops the model classifying the microphone instead of the mosquito.
 RIG = lambda r: r["country"] == "Tanzania" and r["device_type"] == "tascam"
 
-MAX_WIN = 3000                  # per class, keeps the raw-audio cache in RAM
+# Per class. 2000 x 80000 float32 = 640 MB, so a 3-class cache still fits Colab's
+# 12.7 GB alongside an augmented copy.
+MAX_WIN = 2000
 
 
 # ---------------------------------------------------------------- data --------
@@ -97,7 +99,7 @@ def load_clip(path):
     return (x / m).astype(np.float32) if m > 0 else x
 
 
-def windows(x, hop_s=2.5):
+def windows(x, hop_s=1.0):
     step = int(SR * hop_s)
     return [x[i:i + NSAMP] for i in range(0, len(x) - NSAMP + 1, step)] or [x[:NSAMP]]
 
@@ -134,20 +136,26 @@ def build_cache(task):
 
     X, y, grp = [], [], []
     for c, ids in sorted(buckets.items()):
-        n = 0
+        # Spread the budget across recordings rather than draining a few of them.
+        # Aedes has 89 files and gets every window it can give; not_aedes has 2460
+        # and gives one each, which is the more diverse 2000 windows by far.
+        per_file = max(1, MAX_WIN // max(len(ids), 1))
+        n, used = 0, 0
         for fid in tqdm(ids, desc=f"{task}:{names[c]}"):
             if n >= MAX_WIN:
                 break
             try:
-                w = windows(load_clip(idx[fid]))
+                w = windows(load_clip(idx[fid]))[:per_file]
             except Exception as e:
                 print(f"  skip {fid}: {e}")
                 continue
+            used += 1
             for win in w:
                 if n >= MAX_WIN:
                     break
                 X.append(win); y.append(c); grp.append(int(fid)); n += 1
-        print(f"  {names[c]}: {n} windows from {len(ids)} files")
+        print(f"  {names[c]}: {n} windows from {used}/{len(ids)} files "
+              f"(<= {per_file} per file)")
 
     os.makedirs(CACHE, exist_ok=True)
     np.save(f"{CACHE}/{task}_X.npy", np.stack(X))
@@ -187,34 +195,39 @@ def mel_matrix():
     return M
 
 
-def dft_kernel():
-    """Conv1D kernel doing a windowed real DFT.
+def dft_kernels():
+    """Two Conv1D kernels doing a windowed real DFT (cosine and sine halves).
 
     Deliberately not tf.signal.stft: that lowers to ops the TFLite converter only
     keeps via the Flex delegate, which react-native-fast-tflite does not ship.
-    A Conv1D is plain, converts everywhere, and runs in tfjs unchanged.
+    Conv1D is plain, converts everywhere, and runs in tfjs unchanged.
+
+    Two layers rather than one wide one so the real and imaginary halves never
+    have to be sliced apart — Keras 3 will not slice a symbolic tensor without a
+    Lambda, and Lambdas are the thing that breaks serialisation downstream.
     """
     n = np.arange(NFFT)
     win = 0.5 - 0.5 * np.cos(2 * np.pi * n / NFFT)          # hann
     k = np.arange(NFFT // 2 + 1)[:, None]
     ang = 2 * np.pi * k * n[None, :] / NFFT
-    ker = np.concatenate([np.cos(ang) * win, -np.sin(ang) * win], 0)  # (2F, NFFT)
-    return ker.T[:, None, :].astype(np.float32)                       # (NFFT,1,2F)
+    fix = lambda a: a.T[:, None, :].astype(np.float32)      # (NFFT, 1, F)
+    return fix(np.cos(ang) * win), fix(-np.sin(ang) * win)
 
 
 def build(n_classes):
     import tensorflow as tf
-    from tensorflow.keras import layers as L
+    from keras import layers as L, ops
 
     F = NFFT // 2 + 1
+    conv = dict(kernel_size=NFFT, strides=HOP, padding="valid",
+                use_bias=False, trainable=False)
     inp = L.Input(shape=(NSAMP,), name="audio", dtype="float32")
     x = L.Reshape((NSAMP, 1))(inp)
-    x = L.Conv1D(2 * F, NFFT, strides=HOP, padding="valid", use_bias=False,
-                 trainable=False, name="dft")(x)                       # (T, 2F)
-    re, im = x[..., :F], x[..., F:]
-    x = re * re + im * im                                              # power
-    x = tf.matmul(x, tf.constant(mel_matrix()))                        # (T, NMEL)
-    x = tf.math.log(x + 1e-6)
+    re = L.Conv1D(F, name="dft_re", **conv)(x)                         # (T, F)
+    im = L.Conv1D(F, name="dft_im", **conv)(x)
+    x = L.Add()([L.Multiply()([re, re]), L.Multiply()([im, im])])      # power
+    x = L.Dense(NMEL, use_bias=False, trainable=False, name="mel")(x)  # (T, NMEL)
+    x = L.Lambda(lambda t: ops.log(t + 1e-6), name="logmel")(x)
     x = L.LayerNormalization(axis=[1, 2], name="cmvn")(x)              # gain-invariant
     x = L.Reshape((NFRAME, NMEL, 1))(x)
 
@@ -228,7 +241,10 @@ def build(n_classes):
     out = L.Dense(n_classes, activation="softmax", name="probs")(x)
 
     m = tf.keras.Model(inp, out)
-    m.get_layer("dft").set_weights([dft_kernel()])
+    kre, kim = dft_kernels()
+    m.get_layer("dft_re").set_weights([kre])
+    m.get_layer("dft_im").set_weights([kim])
+    m.get_layer("mel").set_weights([mel_matrix()])
     return m
 
 
@@ -331,10 +347,16 @@ def cmd_export(a):
         print(f"{fname}: {len(blob)/1024:.0f} KB  in={i['shape']} out={it.get_tensor(o['index']).shape}")
         made.append(task)
 
-        try:                                          # web demo path
-            import tensorflowjs as tfjs
-            tfjs.converters.save_keras_model(m, f"{ROOT}/out/tfjs_{task}")
-            print(f"  tfjs_{task}/ written")
+        # Web demo path. Must be a GRAPH model, not a layers model: the log-mel
+        # step is a Lambda, and tfjs cannot deserialise a Lambda in JS. Going via
+        # SavedModel sidesteps layer serialisation entirely.
+        try:
+            sm = f"{ROOT}/out/sm_{task}"
+            m.export(sm)
+            os.system(f'tensorflowjs_converter --input_format=tf_saved_model '
+                      f'--output_format=tfjs_graph_model "{sm}" "{ROOT}/out/tfjs_{task}"')
+            print(f"  tfjs_{task}/ written" if os.path.exists(
+                f"{ROOT}/out/tfjs_{task}/model.json") else "  tfjs FAILED")
         except Exception as e:
             print(f"  tfjs skipped: {e}")
 

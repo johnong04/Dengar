@@ -71,3 +71,18 @@ are cheap to repeat. After I push a fix, `!git pull` then rerun the one cell.
   file on both sides of the split is what manufactures a meaningless 99%.
 - **No sex head.** HumBugDB has 22.2 min of female *Aedes* and 0.1 min of male. There is
   nothing to train on. specs.md §6 ranked it first; the data says no.
+- **The TFJS export is a graph model, not a layers model.** The log-mel step is a `Lambda`
+  and tfjs cannot deserialise a `Lambda` in JS. Going via SavedModel avoids the problem.
+
+## Verified before any Colab run
+
+Conversion was smoke-tested locally on TF-CPU: the model builds (380 k params), converts to
+a 1.45 MB `.tflite`, loads in the interpreter, takes `[1, 80000]` float32 and returns
+`[1, 2]`, and agrees with Keras to 7 decimals. band-SNR separates a 500 Hz tone from white
+noise by ~25 dB. So the one irrecoverable risk — "it trains but won't convert" — is closed.
+
+## The honest limitation, for the camera
+
+**89 independent *Aedes* recordings.** Not 22 minutes — 89 recordings, of which roughly 22
+are held out. That is the number that bounds how much the accuracy figure means, and it is
+the one to say out loud rather than let a judge find.
