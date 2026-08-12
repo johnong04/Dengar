@@ -1,4 +1,21 @@
-# v2-full run — resume state (updated 2026-08-12, session 2)
+# v2-full run — COMPLETE (2026-08-12, session 2)
+
+**11/11 slices shipped and committed. Run report: `docs/loop-eng/runs/2026-08-12-v2-full.md`.**
+Nothing below is a pending instruction; it is the state at close. The open items that matter are in
+the run report's "Left undone" section — chiefly that **`src/copy/ms.ts` is machine-drafted and unread
+by a human**, and that **nothing in this run has been rendered on the physical phone**.
+
+One unpromoted observation from slice 21, recorded rather than treated as law because it was NOT
+independently measured: it reported that on this setup a Tailwind spacing class computes to `0px`
+unless that exact class string already appears somewhere in the tree (`pl-[30px]` and `pl-8` both
+computed 0; `pl-6` worked because other files use it). The likely mechanism is the dev server not
+regenerating CSS for a newly-seen class without `--clear`, not a permanent platform rule. **Measure
+`getComputedStyle` before trusting a new spacing class, and verify this before writing it down as a
+fact** — the last platform "fact" a slice reported this run turned out to be invented.
+
+---
+
+# (historical) resume state — session 2, mid-run
 
 Branch `john-v1-citizen`. `npm run check` GREEN (`gating: ok` + `geo: ok`). Every completed slice is
 committed. The app is demoable at this commit.
