@@ -17,6 +17,8 @@ __pycache__/
 .venv/
 venv/
 ml/cache/
+ml/data/
+ml/out/
 *.npy
 
 # models are build outputs, not source — except the two shipped ones

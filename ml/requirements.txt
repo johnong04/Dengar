@@ -1,0 +1,6 @@
+numpy
+scipy
+soundfile
+scikit-learn
+tqdm
+tensorflow
