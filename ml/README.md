@@ -15,33 +15,33 @@ Nothing runs on the laptop. The dataset (4 GB) never touches it.
 
 Paste the label inventory and the per-class window counts back.
 
-## Cell 2 — the product model (~10-15 min)
+## Cell 2 — everything else, unattended (~60-90 min)
+
+Trains all three tasks under both architectures, exports the winner of each, zips it.
+Nobody needs to be watching: `export` reads `out/scores.json` and picks the best
+architecture per task by macro-F1 on its own.
 
 ```python
 %cd /content/Dengar/ml
 !git pull
-!python dengar.py train --task msc --epochs 30
-```
-
-Paste the confusion matrix and classification report.
-
-## Cell 3 — the abstain gate, and the bonus 3-class
-
-```python
-!python dengar.py train --task med --epochs 20
-!python dengar.py train --task tri --epochs 30
-```
-
-## Cell 4 — export
-
-```python
 !pip install -q tensorflowjs
-!python dengar.py export
-!cd out && zip -r /content/dengar_models.zip . && echo done
+!for t in msc med tri; do for a in cnn mobilenet; do echo "===== $t / $a"; \
+   python dengar.py train --task $t --arch $a --epochs 30; done; done 2>&1 \
+   | tee /content/train_log.txt
+!python dengar.py export 2>&1 | tee -a /content/train_log.txt
+!cat out/scores.json
+!cd out && zip -qr /content/dengar_models.zip . && du -h /content/dengar_models.zip
 ```
+
+**Leave the browser tab open.** Colab free disconnects a runtime whose tab is gone,
+and an hour of training goes with it. Everything is logged to `/content/train_log.txt`
+so scrollback loss is survivable; a disconnect is not.
 
 Download `/content/dengar_models.zip` from the Colab file panel, unzip into
 `app/assets/models/`.
+
+**macro-F1, not accuracy**, decides the winner. With 783 *Aedes* windows against 2000
+not_aedes, accuracy rewards a model that always says not_aedes; macro-F1 does not.
 
 ## Re-running
 

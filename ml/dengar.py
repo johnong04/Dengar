@@ -214,7 +214,42 @@ def dft_kernels():
     return fix(np.cos(ang) * win), fix(-np.sin(ang) * win)
 
 
-def build(n_classes):
+_LOG = None
+
+
+def log_layer():
+    """log(x + eps) as a registered Layer, not a Lambda.
+
+    A Lambda cannot be reloaded from .keras without safe_mode=False, and then
+    still fails to infer its output shape. A registered subclass round-trips
+    cleanly, which matters because export() reloads what train() wrote.
+    Import is lazy so `data` does not pay for TensorFlow.
+    """
+    global _LOG
+    if _LOG is None:
+        import keras
+        from keras import ops
+
+        @keras.saving.register_keras_serializable(package="dengar")
+        class LogEps(keras.layers.Layer):
+            def call(self, x):
+                return ops.log(x + 1e-6)
+
+            def compute_output_shape(self, s):
+                return s
+
+        _LOG = LogEps
+    return _LOG
+
+
+def build(n_classes, arch="cnn"):
+    """arch='cnn'       — 380k params from scratch.
+       arch='mobilenet' — ImageNet-pretrained MobileNetV2 on the spectrogram.
+
+    The second exists because the binding constraint is 89 independent Aedes
+    recordings, and pretraining is the standard answer to data that small. Both
+    share the identical front-end, so the exported contract does not change.
+    """
     import tensorflow as tf
     from keras import layers as L, ops
 
@@ -227,15 +262,22 @@ def build(n_classes):
     im = L.Conv1D(F, name="dft_im", **conv)(x)
     x = L.Add()([L.Multiply()([re, re]), L.Multiply()([im, im])])      # power
     x = L.Dense(NMEL, use_bias=False, trainable=False, name="mel")(x)  # (T, NMEL)
-    x = L.Lambda(lambda t: ops.log(t + 1e-6), name="logmel")(x)
+    x = log_layer()(name="logmel")(x)
     x = L.LayerNormalization(axis=[1, 2], name="cmvn")(x)              # gain-invariant
     x = L.Reshape((NFRAME, NMEL, 1))(x)
 
-    for f in (16, 32, 64, 64):
-        x = L.Conv2D(f, 3, padding="same", use_bias=False)(x)
-        x = L.BatchNormalization()(x)
-        x = L.ReLU()(x)
-        x = L.MaxPool2D(2)(x)
+    if arch == "mobilenet":
+        x = L.Resizing(96, 96)(x)
+        x = L.Concatenate()([x, x, x])                  # ImageNet stem wants 3 ch
+        base = tf.keras.applications.MobileNetV2(
+            input_shape=(96, 96, 3), include_top=False, weights="imagenet")
+        x = base(x)
+    else:
+        for f in (16, 32, 64, 64):
+            x = L.Conv2D(f, 3, padding="same", use_bias=False)(x)
+            x = L.BatchNormalization()(x)
+            x = L.ReLU()(x)
+            x = L.MaxPool2D(2)(x)
     x = L.GlobalAveragePooling2D()(x)
     x = L.Dropout(0.3)(x)
     out = L.Dense(n_classes, activation="softmax", name="probs")(x)
@@ -288,8 +330,8 @@ def cmd_train(a):
     cw = {c: len(ytr) / (len(cnt) * n) for c, n in cnt.items()}
     print("class weights", {names[c]: round(w, 2) for c, w in cw.items()})
 
-    m = build(len(names))
-    m.compile(optimizer=tf.keras.optimizers.Adam(1e-3),
+    m = build(len(names), a.arch)
+    m.compile(optimizer=tf.keras.optimizers.Adam(1e-4 if a.arch == "mobilenet" else 1e-3),
               loss="sparse_categorical_crossentropy", metrics=["accuracy"])
     m.fit(Xtr, ytr, validation_data=(X[te], y[te]), epochs=a.epochs,
           batch_size=32, class_weight=cw, callbacks=[
@@ -297,14 +339,28 @@ def cmd_train(a):
                                                restore_best_weights=True)])
 
     p = m.predict(X[te], batch_size=64).argmax(1)
-    print("\n=== " + task + " — paste this back ===")
+    rep = classification_report(y[te], p, target_names=names, digits=3, zero_division=0, output_dict=True)
+    print(f"\n=== {task} / {a.arch} — paste this back ===")
     print("classes:", names)
     print("confusion matrix (rows=true, cols=pred):")
     print(confusion_matrix(y[te], p))
-    print(classification_report(y[te], p, target_names=names, digits=3))
+    print(classification_report(y[te], p, target_names=names, digits=3, zero_division=0))
+    print(f"held-out recordings: {len(set(g[te]))}")
+
+    # macro-F1, not accuracy: with 783 aedes against 2000 not_aedes, accuracy
+    # rewards a model that just says not_aedes.
+    score = rep["macro avg"]["f1-score"]
     os.makedirs(f"{ROOT}/out", exist_ok=True)
-    m.save(f"{ROOT}/out/{task}.keras")
-    print(f"saved out/{task}.keras  ({m.count_params()} params)")
+    m.save(f"{ROOT}/out/{task}_{a.arch}.keras")
+    sf = f"{ROOT}/out/scores.json"
+    all_s = json.load(open(sf)) if os.path.exists(sf) else {}
+    all_s[f"{task}_{a.arch}"] = {"macro_f1": round(score, 4),
+                                 "accuracy": round(rep["accuracy"], 4),
+                                 "params": int(m.count_params()),
+                                 "test_recordings": len(set(g[te].tolist()))}
+    json.dump(all_s, open(sf, "w"), indent=2)
+    print(f"saved out/{task}_{a.arch}.keras  macro-F1 {score:.3f}  "
+          f"({m.count_params()} params)")
 
 
 # -------------------------------------------------------------- export --------
@@ -325,13 +381,26 @@ def band_snr(x):
 
 def cmd_export(a):
     import tensorflow as tf
+    log_layer()                                  # register before load_model
     os.makedirs(f"{ROOT}/out", exist_ok=True)
+    sf = f"{ROOT}/out/scores.json"
+    scores = json.load(open(sf)) if os.path.exists(sf) else {}
     made = []
     for task, fname in (("med", "med.tflite"), ("msc", "msc.tflite"), ("tri", "tri.tflite")):
-        src = f"{ROOT}/out/{task}.keras"
+        # Pick the architecture that actually won this task. Nobody has to be
+        # awake to compare them.
+        cand = {k: v for k, v in scores.items() if k.startswith(task + "_")}
+        if not cand:
+            continue
+        best = max(cand, key=lambda k: cand[k]["macro_f1"])
+        src = f"{ROOT}/out/{best}.keras"
         if not os.path.exists(src):
             continue
-        m = tf.keras.models.load_model(src)
+        print(f"\n{task}: using {best} (macro-F1 {cand[best]['macro_f1']}) "
+              f"out of {sorted(cand)}")
+        # safe_mode=False because the log-mel step is a Lambda and Keras refuses to
+        # deserialise a Python lambda without it. The artifact is one we just wrote.
+        m = tf.keras.models.load_model(src, safe_mode=False)
         conv = tf.lite.TFLiteConverter.from_keras_model(m)
         conv.optimizations = []                      # float32; quantising a fixed
         conv.target_spec.supported_ops = [           # DFT kernel wrecks it
@@ -383,6 +452,7 @@ if __name__ == "__main__":
     sub = ap.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("data"); d.add_argument("--task", default=None); d.set_defaults(f=cmd_data)
     t = sub.add_parser("train"); t.add_argument("--task", default="msc", choices=list(TASKS))
+    t.add_argument("--arch", default="cnn", choices=["cnn", "mobilenet"])
     t.add_argument("--epochs", type=int, default=30); t.set_defaults(f=cmd_train)
     e = sub.add_parser("export"); e.set_defaults(f=cmd_export)
     a = ap.parse_args()
