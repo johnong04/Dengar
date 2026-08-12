@@ -45,6 +45,18 @@
   refuted when one hit with 2 agents running — do not attribute infrastructure noise to a controllable
   cause without evidence.
 
+- 2026-08-12 v2-full: **parking orphan files in the session scratchpad loses them.** RESUME.md told
+  the next session slice 19's partial helper was parked at `<scratchpad>/slice19/Roadmap.tsx`; the
+  scratchpad is session-scoped, so it was gone and the slice was rebuilt from scratch. The
+  park-outside-`app/src/` protocol is right, the destination was wrong — park under a gitignored path
+  INSIDE the repo, or accept the rebuild and say so in RESUME rather than promising a file.
+- 2026-08-12 v2-full: **a formatter with no config file is a shared-gate hazard.** Two concurrent
+  agents each discovered independently that bare `npx prettier --write` reformats to double-quote/80-col
+  against a single-quote/100-col tree, and each hand-passed flags to work around it. Nobody reported it
+  as a defect because nobody's own slice went red. Fixed by committing `app/.prettierrc`. Class of miss:
+  a hazard every agent routes around privately is invisible to the run — the orchestrator only sees it
+  when two reports mention the same workaround.
+
 ## §Empty gates (checks that ran and found nothing — demote after 3 consecutive empty runs)
 
 - 2026-08-12 v1-citizen: §2 language sweep — ran per-slice ×6 + full sweep in slice 8; **zero hits
