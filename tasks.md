@@ -9,7 +9,7 @@
 - [x] 05 history (smoke)
 - [x] 06 onboarding + mic permission (smoke)
 - [x] 07 offline indicator (smoke)
-- [ ] 08 critique + polish pass (hard)
+- [x] 08 critique + polish pass (hard)
 
 ## Later (not this run)
 - [ ] v2 officer surface (light register, own board round)
