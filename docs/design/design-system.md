@@ -106,6 +106,42 @@ as the v2 officer surface, tracked in the light-ground column above. v1 abstains
 dark ground rather than C's indigo drench — refusal reads as the instrument at rest, not a second
 verdict color.
 
+## Gate 2 — warmth revision + officer surface (John, 2026-08-12, second sitting)
+
+**Warmth revision: APPROVED as the citizen language.** John: *"warm-detected is nice and aesthetic.
+warm-abstain and capture is definitely more friendly and colorful compared to what we have now,
+that's the right direction… but the colour choice looks a bit awkward or very slightly too much, so
+that can be improved."* → **The direction is law; the specific hues are NOT yet law.** The refinement
+brief: keep warm ink/muted, the filled grouped surfaces, the radius-20 softness, mono-for-numbers-only
+and the gradient drench. Dial the amber and mint back — the amber block on warm-capture read
+muddy-brown over near-black (my own read, John's "awkward"). Aim for tints that read as *warm light on
+a dark instrument*, not as coloured plastic. aedes-red stays exclusive to a positive Aedes verdict.
+
+**Officer surface: officer-e + officer-d.** `e` (Trend) is the officer HOME — the 14-day detection
+series with the rainfall overlay and the hollow +14–21 d case bars under a `14–21 d` bracket, which
+makes specs §1's lead-time claim a *shape* instead of a sentence. `d` (Map) is the cluster-detail
+screen behind it. Both in the light officer register above. `f` (Signal) REJECTED: its arc gauge
+implies a denominator specs §9 cannot source — an invented figure wearing a gauge. `a`/`b`/`c`
+rejected round 1 (prose-dense; an officer must SEE the situation, not read it).
+John's amendment to `e`: **more CTA emphasis, borrowing `f`'s directive weight — a nudge, not a drench.**
+Also fix on `e`: the directive card's red left-edge stripe is a banned side-stripe accent.
+
+**No gate 3.** Two audiences = two visual languages = two gates, both now closed. v2 and v3 screens
+inherit whichever language their audience implies; a new version is never a new register.
+
+## Maps — bundled raster, never a map library (decided 2026-08-12)
+
+`app/assets/maps/setapak-osm.png` — 512×768, OpenStreetMap zoom 15, stitched from 6 tiles. Covers
+Taman Melati, Wangsa Maju, Danau Kota, Setapak. Bounds for lat/lon → pixel projection:
+**north 3.228271 · west 101.711426 · south 3.195364 · east 101.733398** (Web-Mercator linear in x;
+use the Mercator y formula for latitude, not a linear lerp). Attribution required on any screen that
+renders it: *© OpenStreetMap contributors*.
+
+A map LIBRARY (`react-native-maps`, Mapbox, MapLibre) is banned here: native module → breaks the dev
+build until an EAS rebuild, needs an API key with billing, and has no usable web implementation, which
+would kill the screenshot loop. Decisively: **tiles need network, and specs §7's uncuttable shot is in
+airplane mode.** A bundled raster is the only version that survives the demo.
+
 ## Rubric axes (the taste half of the loop oracle; floors live in loop-eng-profile)
 
 1. **Verdict legibility** — outcome + next action readable in <1 s at arm's length.
