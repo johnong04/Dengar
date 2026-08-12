@@ -1,4 +1,4 @@
-# Slice 21 — final critique + polish, whole app · gate: hard (2 fix cycles) · overnight-eligible: yes
+# Slice 21 — final critique + polish, whole app · gate: hard (1 fix cycle) · overnight-eligible: yes
 
 Constraints: see v2-full-COMMON.md — read it first. Runs last.
 
@@ -21,7 +21,7 @@ set John reviews.
    roadmap screen marked; the §2 language grep clean over `src/copy/` and `src/`. Report a table:
    screen → figures shown → source. **Anything unsourceable gets removed, not reworded.**
 5. **Grade the rubric** (design-system.md §Rubric axes) per screen, 1–5, evidence per score.
-6. **Fix within 2 bounded rounds**, re-screenshot after each.
+6. **Fix within 1 bounded round**, re-screenshot after each.
 
 ## Deliverables
 - `docs/loop-eng/screens/final/` — complete set, every screen and state, both viewports for the gated

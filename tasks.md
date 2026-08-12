@@ -25,7 +25,7 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
 - [ ] 18 BM/EN toggle — copy extracted behind a lookup (smoke)
 - [ ] 19 v3 citizen roadmap — privacy, detail explainer, impact (smoke)
 - [ ] 20 v3 officer roadmap — forecast, surgical dispatch (smoke)
-- [ ] 21 final critique + polish, whole app (hard, 2 fix cycles)
+- [ ] 21 final critique + polish, whole app (hard, 1 fix cycle)
 
 ## Later (not this run)
 - [ ] Real audio + fast-tflite + persistence — next EAS build batch (one build, all native deps)

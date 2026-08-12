@@ -17,7 +17,7 @@ No third register: a v3 screen inherits its audience's language.
   horizontal scroll at 390×844 and 430×932 · tap targets ≥44px · reduced-motion alternative exists ·
   copy diff = 0 vs the plan · specs §2 sweep clean.
 - **Rubric (evaluator GRADES):** design-system.md §Rubric axes.
-- **Fix cycles: every `hard` slice gets evaluator → up to 2 fix rounds → flag-and-continue.**
+- **Fix cycles: every `hard` slice gets evaluator → up to 1 fix round → flag-and-continue.**
   Smoke slices: script gate + one quick fix attempt.
 
 ## Hard constraints
@@ -55,4 +55,4 @@ Gate: `cd app && npm run check`. Screenshots: playwright-cli 390×844 →
 
 ## Handoff
 Append completed / started-but-unfinished to `docs/loop-eng/handoff.md` before exiting. Findings that
-survive 2 fix rounds: log and continue — never halt.
+survive the fix round: log and continue — never halt. Slice 21 is where survivors get their second look.

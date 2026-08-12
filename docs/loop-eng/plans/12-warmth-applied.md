@@ -4,7 +4,7 @@ Constraints: see v2-full-COMMON.md — read it first. Depends on slice 11 (token
 
 ## Oracle
 `docs/design/board/warm-{capture,abstain,detected}.png` for language; `docs/loop-eng/screens/final/*`
-for content parity (nothing may be lost). Floors + rubric. Evaluator → up to 2 fix rounds.
+for content parity (nothing may be lost). Floors + rubric. Evaluator → up to 1 fix round.
 
 ## Outcome
 Every shipped v1 citizen screen is repainted in the slice-11 law. **Behaviour, copy and numbers do not

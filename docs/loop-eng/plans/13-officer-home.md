@@ -4,7 +4,7 @@ Constraints: see v2-full-COMMON.md — read it first.
 
 ## Oracle
 `docs/design/board/officer-e.png` (exceed it) + John's two amendments + floors + rubric.
-Evaluator → up to 2 fix rounds.
+Evaluator → up to 1 fix round.
 
 ## Outcome
 The officer surface exists as a real route group, visually unmistakable from the citizen app: light

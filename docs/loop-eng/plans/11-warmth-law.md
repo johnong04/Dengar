@@ -4,7 +4,7 @@ Constraints: see v2-full-COMMON.md — read it first.
 
 ## Oracle
 `docs/design/board/warm-{capture,abstain,detected}.png` (the approved direction) + John's refinement
-brief in design-system.md §Gate 2 + contrast floors. Evaluator → up to 2 fix rounds.
+brief in design-system.md §Gate 2 + contrast floors. Evaluator → up to 1 fix round.
 
 ## Outcome
 The warm citizen language becomes law: `docs/design/design-system.md` tokens table rewritten and

@@ -4,7 +4,7 @@ Constraints: see v2-full-COMMON.md — read it first. Depends on slice 13 (offic
 
 ## Oracle
 `docs/design/board/officer-d.png` (exceed it — the board's map was hand-drawn; this one is real) +
-floors + rubric. Evaluator → up to 2 fix rounds.
+floors + rubric. Evaluator → up to 1 fix round.
 
 ## Outcome
 `/officer/cluster/[id]` — the screen behind a watch row. officer-d's information architecture, but the
