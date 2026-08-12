@@ -48,7 +48,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && tsx src/inference/gating.check.ts"
+    "check": "tsc --noEmit && tsx src/inference/gating.check.ts && tsx src/lib/geo.check.ts"
   },
   "private": true
 }
