@@ -73,6 +73,15 @@
   mode with no upside, and the orchestrator writing the message is what kept each commit honest about
   what the slice actually did (including its unverified parts).
 
+- 2026-08-12 v2-full s2: **a slice claiming to fix something is not evidence it is fixed.** Slice 15
+  flipped the landmark pill to stop it colliding with the RAIN pill and reported it done; slice 21
+  measured an actual 39x9 px overlap still there at 390 and 26x24 px at 430-signed. The maker checked
+  the state it was thinking about, not all four. Promoted: a collision/overlap claim is closed only by
+  a bounding-box intersection over EVERY state combination, never by looking at one render.
+- 2026-08-12 v2-full s2: **a floor can pass in one language and fail in another.** Onboarding's Skip
+  hit box was 30.1x44 in English and passed in Malay, where the longer word widened it. Every floor
+  keyed to text width is now a per-language floor, not a per-screen one.
+
 ## §Empty gates (checks that ran and found nothing — demote after 3 consecutive empty runs)
 
 - 2026-08-12 v1-citizen: §2 language sweep — ran per-slice ×6 + full sweep in slice 8; **zero hits
