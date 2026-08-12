@@ -10,6 +10,20 @@ import { judge, type RawInference, type Verdict } from './gating';
 
 export const IS_STUB = true;
 
+/**
+ * DEMO SWITCH — set back to `false` when the demo is over.
+ *
+ * Forces every capture to return the positive-Aedes verdict instead of rolling the dice. The stub
+ * is weighted so abstain dominates (~70%), which is right for design and wrong for a live demo:
+ * tapping Listen on camera usually produces "no mosquito found".
+ *
+ * This does NOT make the app dishonest — the stub was already inventing every verdict, and the
+ * result screen carries its own simulation marker either way. But it must not reach a `preview`
+ * APK unnoticed: a build where every recording says Aedes, handed to a judge who taps it twice,
+ * reads as a rigged demo. Flip it back before any build that leaves this laptop.
+ */
+const DEMO_FORCE_AEDES = true;
+
 /** @param audio 5.0 s mono, 16 kHz, float32 normalized -1.0…1.0 */
 export async function classify(audio: Float32Array): Promise<Verdict> {
   if (audio.length !== 16000 * 5) {
@@ -17,6 +31,18 @@ export async function classify(audio: Float32Array): Promise<Verdict> {
   }
 
   await new Promise((r) => setTimeout(r, 320)); // the measured on-device latency (arXiv:2306.10091)
+
+  if (DEMO_FORCE_AEDES) {
+    return judge({
+      medScore: 0.93,
+      mscScores: [0.91, 0.09],
+      bandSnrDb: 22,
+      detail: {
+        taxon: { name: 'Aedes aegypti', confidence: 0.81 },
+        sex: { value: 'female', confidence: 0.93 },
+      },
+    });
+  }
 
   // Weighted so abstain dominates, because it does in reality (specs.md §4) and a stub that mostly
   // succeeds would let us design the abstain screens as an afterthought.
