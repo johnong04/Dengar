@@ -27,35 +27,47 @@ borrowed weights.
 
 | Metric | Value |
 |---|---|
-| macro-F1 | **0.840** |
-| accuracy | 0.849 |
-| ***Aedes* recall** | **0.962** |
-| ***Aedes* precision** | **0.689** |
+| macro-F1 | **0.804** |
+| accuracy | 0.820 |
+| ***Aedes* recall** | **0.826** |
+| ***Aedes* precision** | **0.681** |
 | test set | 735 windows drawn from **523 held-out recordings** |
 
 ```
                  predicted
               aedes  not_aedes
-true aedes      226      9
-true not_aedes  102    398
+true aedes      194     41
+true not_aedes   91    409
 ```
 
-**Say it like this:** *"It catches 96% of Aedes and cries wolf on about one call in three. For a
+**Say it like this:** *"It catches 83% of Aedes and cries wolf on about one call in three. For a
 health tool that is the right way round to be wrong — a miss is an unreported dengue risk, a
 false alarm is a wasted fogging run. And it is a dial, not a fixed property: the app requires
 70% confidence before it calls Aedes, and raising that trades sensitivity for precision."*
 
-**Do not say** "85% accurate" on its own. It is true and it hides the interesting part.
+**Do not say** "82% accurate" on its own. It is true and it hides the interesting part.
 
 ### med — the abstain gate
 
-macro-F1 **0.924**. Mosquito recall 0.883, background recall 0.964.
+macro-F1 **0.941**. Mosquito recall 0.927, background recall 0.954.
 This is what makes the three abstain screens real rather than decorative.
 
 ### tri — bonus, not for presentation
 
-macro-F1 0.602, *Aedes* recall 0.504. Gets *Aedes* right about half the time. Mention only if
-asked directly, and only as "a three-species head we trained but would not ship".
+macro-F1 0.667, *Aedes* recall 0.769, precision 0.620. Better than expected, still well short
+of the binary. Mention only if asked directly, and only as "a three-species head we trained but
+would not ship".
+
+### Run-to-run variance — know this before quoting a third decimal
+
+The model was trained twice with identical code and data. Weight initialisation is not seeded,
+so the scores moved: **msc 0.840 → 0.804, med 0.924 → 0.941, tri 0.602 → 0.667.** Roughly
+±0.04 on macro-F1.
+
+The figures in this file are from the **second run — the one whose files actually shipped.**
+Treat two significant figures as real and the third as noise. If asked how confident the number
+is, "0.80 to 0.84 across runs" is the honest answer, and giving it unprompted is stronger than
+being caught with false precision. With 89 *Aedes* recordings, this much variance is expected.
 
 ## Why these numbers are trustworthy
 
