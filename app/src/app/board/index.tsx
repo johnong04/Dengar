@@ -7,6 +7,11 @@ const ROUTES = [
   ['B — Public Clinic', ['/board/b-capture', '/board/b-detected', '/board/b-abstain']],
   ['C — Verdict', ['/board/c-capture', '/board/c-detected', '/board/c-abstain']],
   ['v2 officer', ['/board/officer-a', '/board/officer-b', '/board/officer-c']],
+  ['v2 officer — round 2', ['/board/officer-d', '/board/officer-e', '/board/officer-f']],
+  [
+    'warmth revision (citizen)',
+    ['/board/warm-capture', '/board/warm-abstain', '/board/warm-detected'],
+  ],
 ] as const;
 
 export default function BoardIndex() {
