@@ -21,7 +21,7 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
 - [x] 14 officer cluster map on the real OSM basemap (hard · board officer-d)
 - [ ] 15 officer alert feed + dispatch acknowledgement (smoke)
 - [ ] 16 citizen neighbourhood risk + prevention (smoke)
-- [ ] 17 static-node mode — setup + running (smoke)
+- [x] 17 static-node mode — setup + running (smoke)
 - [ ] 18 BM/EN toggle — copy extracted behind a lookup (smoke)
 - [ ] 19 v3 citizen roadmap — privacy, detail explainer, impact (smoke)
 - [ ] 20 v3 officer roadmap — forecast, surgical dispatch (smoke)
