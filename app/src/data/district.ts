@@ -30,10 +30,15 @@ export type WatchArea = {
   name: string;
   /** 14-day detection counts, oldest first — the sparkline. */
   spark: readonly number[];
-  /** Detections in the last 72 h. */
+  /** Detections in the last 72 h — derived from `spark`, never typed in. */
   count: number;
-  /** Signed change, or a "silent for" duration when count is 0. */
+  /**
+   * Derived: the signed 72 h-over-72 h change, or — when `count` is 0 — how long the area has been
+   * silent, read off `spark` so the string is always true of the bars beside it.
+   */
   delta: string;
+  /** Present only when `count` is 0: days since this area's last detection. */
+  silentDays?: number;
   tone: Tone;
   /** Seeded centroid, inside the bundled raster's bounds (design-system.md §Maps). */
   center: { lat: number; lon: number };
@@ -86,17 +91,74 @@ export const district = {
   simulated: true,
 } as const;
 
-export const kpis: readonly Kpi[] = [
-  { key: 'detections', label: 'Detections', value: '6', delta: '+2', tone: 'alert' },
-  { key: 'clusters', label: 'Clusters', value: '1', delta: '+1', tone: 'alert' },
-  { key: 'nodes', label: 'Nodes', value: '23/26', delta: '−3', tone: 'neutral' },
-];
+/* ───────────────────────────────────────────────────────────────────────────────────────────────
+   ONE BASE FACT, everything else derived (fix round, slice 13).
+   The only hand-written detection numbers in this file are the three area sparks below. The
+   district series is their element-wise sum; every count, delta, KPI value and heat-grid cell is
+   computed from that sum. Two figures can no longer disagree on screen, because there is only one
+   figure and the rest is arithmetic.
 
-// The last three days sum to 14 — the sanctioned cluster (14 detections / 72 h).
-const DETECTIONS_14D = [0, 1, 0, 1, 2, 1, 0, 2, 1, 2, 3, 4, 4, 6] as const;
+   Sanctioned anchors preserved: Taman Melati's last 72 h sums to **14** (specs' 14 detections /
+   72 h, and `activeCluster.detections`, and the 14 plotted dots in `detectionsByArea`), and the
+   last three rain days sum to **+40 mm**.
+   ─────────────────────────────────────────────────────────────────────────────────────────────── */
+
+/** The 72 h window every `count` and delta is measured over, in days. */
+const WINDOW_DAYS = 3;
+const DAYS = 14;
+
+const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0);
+/** Sum of the most recent `WINDOW_DAYS` (the last 72 h). */
+const windowSum = (xs: readonly number[]) => sum(xs.slice(-WINDOW_DAYS));
+/** Sum of the 72 h before that — the comparison the delta is against. */
+const priorWindowSum = (xs: readonly number[]) => sum(xs.slice(-WINDOW_DAYS * 2, -WINDOW_DAYS));
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
+/** Days since the last non-zero day, or null if the series is silent throughout. */
+function daysSinceLast(xs: readonly number[]): number | null {
+  for (let i = xs.length - 1; i >= 0; i--) if (xs[i] > 0) return xs.length - 1 - i;
+  return null;
+}
+
+/**
+ * The three watch areas. Sparks are 14 days, oldest first — the ONLY typed-in detection counts.
+ *
+ * Taman Melati's last three days are [4, 4, 6] = 14, which is the sanctioned cluster figure and the
+ * `ageBand` split of its 14 mapped detections. Wangsa Maju's [1, 1, 1] = 3 is one detection per
+ * recency band, matching its three mapped dots. Danau Kota has been silent since day 8, so its
+ * count is 0 and its row reports the silence instead of a change.
+ */
+const AREA_SEED = [
+  {
+    id: 'taman-melati',
+    name: 'Taman Melati',
+    spark: [0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 2, 4, 4, 6],
+    tone: 'alert' as Tone,
+    center: { lat: 3.2145, lon: 101.7216 },
+  },
+  {
+    id: 'wangsa-maju',
+    name: 'Wangsa Maju',
+    spark: [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    tone: 'caution' as Tone,
+    center: { lat: 3.2032, lon: 101.7305 },
+  },
+  {
+    id: 'danau-kota',
+    name: 'Danau Kota',
+    spark: [0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+    tone: 'neutral' as Tone,
+    center: { lat: 3.2035, lon: 101.7148 },
+  },
+] as const;
+
+/** The district series IS the areas, added up. Nothing else may define it. */
+const DETECTIONS_14D: readonly number[] = Array.from({ length: DAYS }, (_, d) =>
+  sum(AREA_SEED.map((a) => a.spark[d])),
+);
+
 // The last three days sum to 40 — the sanctioned +40 mm.
 const RAIN_14D = [2, 0, 0, 3, 1, 0, 0, 5, 2, 4, 6, 12, 16, 12] as const;
-// +14…+21 d inclusive: 8 days. Magnitudes are illustrative only.
+// +14…+21 d inclusive: 8 days. A shape only — no magnitude is claimed or rendered.
 const PROJECTED_CASES = [1, 3, 6, 9, 11, 8, 5, 3] as const;
 
 export const trend: TrendSeries = {
@@ -111,59 +173,109 @@ export const trend: TrendSeries = {
   },
 };
 
-/** Hour band × day. The daylight-biting vector shows in the two middle bands. */
+/**
+ * Hour band × day, DERIVED so each column sums to that day's district detections — the grid and the
+ * chart above it are the same data at two resolutions, and a paused frame cannot catch them
+ * disagreeing.
+ *
+ * The daylight-biting shape (specs.md §2: *Aedes aegypti* bites in daylight) is the argument the
+ * grid exists to make, so it is carried by fixed band weights rather than by hand-placed cells:
+ * 06–12 heaviest, 12–18 close behind, 18–24 light, 00–06 residual. Whole detections are allocated
+ * by largest remainder, ties to the heavier band, so every column total is exact.
+ */
+const HEAT_BANDS = [
+  { label: '18–24', weight: 0.16 },
+  { label: '12–18', weight: 0.34 },
+  { label: '06–12', weight: 0.42 },
+  { label: '00–06', weight: 0.08 },
+] as const;
+
+function allocateBands(total: number): number[] {
+  const raw = HEAT_BANDS.map((b) => total * b.weight);
+  const out = raw.map((v) => Math.floor(v));
+  let left = total - sum(out);
+  const order = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac || HEAT_BANDS[b.i].weight - HEAT_BANDS[a.i].weight);
+  for (const { i } of order) {
+    if (left <= 0) break;
+    out[i] += 1;
+    left -= 1;
+  }
+  return out;
+}
+
+const HEAT_DAYS = DETECTIONS_14D.slice(DAYS - 7); // the 7 most recent days, oldest first
+const HEAT_COLUMNS = HEAT_DAYS.map(allocateBands);
+
 export const heat: HeatGrid = {
-  rows: ['18–24', '12–18', '06–12', '00–06'],
+  rows: HEAT_BANDS.map((b) => b.label),
   cols: ['06', '07', '08', '09', '10', '11', '12'],
-  values: [
-    [0, 0, 0, 1, 0, 0, 1],
-    [1, 0, 2, 2, 1, 3, 3],
-    [1, 2, 1, 3, 2, 4, 5],
-    [0, 0, 0, 0, 1, 0, 1],
-  ],
-  max: 5,
+  values: HEAT_BANDS.map((_, band) => HEAT_COLUMNS.map((col) => col[band])),
+  max: Math.max(...HEAT_COLUMNS.flat()),
 };
 
-export const watchAreas: readonly WatchArea[] = [
-  {
-    id: 'taman-melati',
-    name: 'Taman Melati',
-    spark: [0, 1, 0, 1, 2, 1, 0, 2, 1, 2, 3, 4, 4, 6],
-    count: 14,
-    delta: '+6',
-    tone: 'alert',
-    center: { lat: 3.2145, lon: 101.7216 },
-  },
-  {
-    id: 'wangsa-maju',
-    name: 'Wangsa Maju',
-    spark: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1],
-    count: 3,
-    delta: '+1',
-    tone: 'caution',
-    center: { lat: 3.2032, lon: 101.7305 },
-  },
-  {
-    id: 'danau-kota',
-    name: 'Danau Kota',
-    spark: [1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0],
-    count: 0,
-    delta: '11 h',
-    tone: 'neutral',
-    center: { lat: 3.2035, lon: 101.7148 },
-  },
-];
+/** Counts and deltas are read off the sparks — never typed in beside them. */
+export const watchAreas: readonly WatchArea[] = AREA_SEED.map((a) => {
+  const count = windowSum(a.spark);
+  const silentDays = count === 0 ? daysSinceLast(a.spark) : null;
+  return {
+    id: a.id,
+    name: a.name,
+    spark: a.spark,
+    count,
+    // A silent area reports how long it has been silent; an active one reports 72 h over 72 h.
+    delta: silentDays === null ? signed(count - priorWindowSum(a.spark)) : `${silentDays} d`,
+    ...(silentDays === null ? {} : { silentDays }),
+    tone: a.tone,
+    center: a.center,
+  };
+});
+
+const melati = watchAreas.find((w) => w.id === 'taman-melati')!;
 
 export const activeCluster: Cluster = {
-  id: 'taman-melati',
-  area: 'Taman Melati',
+  id: melati.id,
+  area: melati.name,
   blocks: 'B3–B5',
-  detections: 14,
-  windowHours: 72,
-  rainMm: 40,
+  // The cluster IS Taman Melati's 72 h count — the sanctioned 14, and the mapped dot count.
+  detections: melati.count,
+  windowHours: WINDOW_DAYS * 24,
+  rainMm: windowSum(RAIN_14D),
   trend: 'rising',
-  center: { lat: 3.2145, lon: 101.7216 },
+  center: melati.center,
 };
+
+/** Nodes are the only KPI with no series behind them; one place declares them. */
+const NODES = { reporting: 23, total: 26, delta: -3 };
+
+const today = DETECTIONS_14D[DAYS - 1];
+const yesterday = DETECTIONS_14D[DAYS - 2];
+const clusters = [activeCluster];
+
+export const kpis: readonly Kpi[] = [
+  {
+    key: 'detections',
+    label: 'Detections',
+    value: String(today),
+    delta: signed(today - yesterday),
+    tone: 'alert',
+  },
+  {
+    key: 'clusters',
+    label: 'Clusters',
+    value: String(clusters.length),
+    delta: signed(clusters.length),
+    tone: 'alert',
+  },
+  {
+    key: 'nodes',
+    label: 'Nodes',
+    value: `${NODES.reporting}/${NODES.total}`,
+    delta: signed(NODES.delta),
+    tone: 'neutral',
+  },
+];
 
 /* ───────────────────────────────────────────────────────────────────────────────────────────────
    Cluster-map layer — ADDED ADDITIVELY in slice 14 for `/officer/cluster/[id]`.
@@ -210,7 +322,8 @@ export const clusterBlocks: readonly SurveyBlock[] = [
  * Detections per watch area, keyed by `WatchArea.id`.
  *
  * Taman Melati carries exactly 14 — `activeCluster.detections` — all inside B3–B5, and the band
- * split is 6 / 4 / 4, which is `DETECTIONS_14D`'s last three days [4, 4, 6] read newest-first. The
+ * split is 6 / 4 / 4, which is that area's own spark read newest-first ([4, 4, 6] → 6 / 4 / 4; the
+ * slice-13 fix round made the district series the SUM of the areas, so this now cites the area). The
  * dot count and the sheet's `14 / 72 h` are therefore the same number, not two numbers that agree.
  * Danau Kota is deliberately empty: `count: 0`, silent 11 h.
  */

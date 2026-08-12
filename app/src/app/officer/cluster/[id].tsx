@@ -432,7 +432,7 @@ export default function ClusterDetail() {
             <View className="mt-4">
               <Text className="font-plex-medium text-[15px] text-o-ink">No cluster · monitoring</Text>
               <Text className="mt-1 font-mono text-[11px] text-o-muted">
-                {area.count === 0 ? `silent ${area.delta}` : `${area.delta} on the day`} · no fogging
+                {area.count === 0 ? `silent ${area.delta}` : `${area.delta} on 72 h`} · no fogging
                 directive
               </Text>
             </View>

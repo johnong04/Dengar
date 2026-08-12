@@ -1,4 +1,4 @@
-import { Link, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -127,7 +127,7 @@ export default function OfficerHome() {
             onPress={() => setAcknowledged(true)}
             className="min-h-[44px] shrink-0 justify-center rounded-card bg-o-bg px-4"
             style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
-            <Text className="text-center font-plex-semibold text-[13px] text-o-primary">
+            <Text className="text-center font-plex-semibold text-[15px] text-o-primary">
               {acknowledged ? 'Acknowledged' : 'Acknowledge'}
             </Text>
           </Pressable>
@@ -135,8 +135,9 @@ export default function OfficerHome() {
 
         {/* ── the 14-day chart ──────────────────────────────────────────── */}
         <View className="mt-5 px-5">
-          <View className="flex-row items-center justify-between">
-            <Eyebrow>Trend</Eyebrow>
+          {/* No section label here: the legend names all three series and the axis already reads
+              −14 d…+21 d, so an eyebrow would label a chart that labels itself. */}
+          <View className="flex-row items-center justify-start">
             <View className="flex-row items-center gap-3.5">
               <LegendKey label="detections" swatch={<View className="h-2 w-2 rounded-[2px] bg-o-alert" />} />
               <LegendKey
@@ -289,9 +290,7 @@ export default function OfficerHome() {
         <View className="mt-4 border-t border-o-line px-5 pt-3">
           <Eyebrow>Watch areas</Eyebrow>
           {watchAreas.map((w) => (
-            /* The cast drops out in slice 14, when /officer/cluster/[id] exists and typed routes
-               know the path. Until then a tap lands on not-found — the href is already correct. */
-            <Link key={w.id} href={`/officer/cluster/${w.id}` as Href} asChild>
+            <Link key={w.id} href={{ pathname: '/officer/cluster/[id]', params: { id: w.id } }} asChild>
               <Pressable
                 accessibilityRole="link"
                 className="min-h-[52px] flex-row items-center gap-3 border-b border-o-line py-3"
