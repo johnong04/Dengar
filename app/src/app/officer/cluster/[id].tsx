@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DirectiveRecord } from '@/components/DirectiveRecord';
 import {
   CLUSTER_RING_RADIUS_M,
   FOG_BY_STAMP,
@@ -31,6 +32,7 @@ import {
   type Point,
   type Size,
 } from '@/lib/geo';
+import { acknowledge, useAcknowledgement } from '@/store/dispatch';
 
 // Officer CLUSTER DETAIL — the screen behind a watch row (gated direction officer-d), except the
 // basemap is no longer hand-drawn: it is the real bundled OSM raster of Setapak, and every block,
@@ -45,6 +47,9 @@ import {
 //
 // Floating labels are deliberately OPAQUE `o-bg` pills, never translucent — a glass pill over a
 // photographic raster has an unpredictable ground, and design-system.md bans glassmorphism anyway.
+//
+// Slice 15: signing the directive here writes the shared record in `store/dispatch.ts`, so the
+// alert feed and the officer home behind this screen are already updated when it is dismissed.
 
 const MAP_IMAGE = require('@/assets/maps/setapak-osm.png');
 
@@ -120,7 +125,9 @@ function FloatLabel({
 export default function ClusterDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [acknowledged, setAcknowledged] = useState(false);
+  // The record lives in `store/dispatch.ts`, not in this screen: signing it here has to update the
+  // alert feed and the officer home too, and a local flag would strand them one reload behind.
+  const ack = useAcknowledgement();
   const [map, setMap] = useState<Size | null>(null);
   const [sheetH, setSheetH] = useState(SHEET_H_FALLBACK);
 
@@ -297,6 +304,11 @@ export default function ClusterDetail() {
                   key={l.id}
                   at={p}
                   viewportWidth={visible.width}
+                  /* Flip under the anchor when the label would otherwise sit in the top band, where
+                     the legend and the rain pill live. The acknowledged sheet is taller than the
+                     unsigned one, which shortens the visible map and lifts every projected point —
+                     a label is not allowed to collide with the readouts just because the sheet grew. */
+                  below={p.y < 64}
                   className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1">
                   <Text className="font-plex-medium text-[11px] text-o-muted">{l.name}</Text>
                 </FloatLabel>
@@ -410,7 +422,12 @@ export default function ClusterDetail() {
             </View>
           ) : null}
 
-          {hasCluster ? (
+          {hasCluster && ack && ack.clusterId === area.id ? (
+            // Signed: the instruction becomes the record on file — same component as the home's.
+            <View className="mt-4">
+              <DirectiveRecord ack={ack} />
+            </View>
+          ) : hasCluster ? (
             <>
               <View className="mt-4 flex-row items-baseline justify-between">
                 <Text className="font-plex-semibold text-[20px] text-o-ink">Fog within 48 h</Text>
@@ -418,14 +435,10 @@ export default function ClusterDetail() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: acknowledged }}
-                onPress={() => setAcknowledged(true)}
-                className={`mt-3 min-h-[48px] items-center justify-center rounded-card ${acknowledged ? 'border border-o-line bg-o-surface' : 'bg-o-primary'}`}
+                onPress={acknowledge}
+                className="mt-3 min-h-[48px] items-center justify-center rounded-card bg-o-primary"
                 style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
-                <Text
-                  className={`font-plex-semibold text-[15px] ${acknowledged ? 'text-o-muted' : 'text-o-bg'}`}>
-                  {acknowledged ? 'Acknowledged' : 'Acknowledge'}
-                </Text>
+                <Text className="font-plex-semibold text-[15px] text-o-bg">Acknowledge</Text>
               </Pressable>
             </>
           ) : (

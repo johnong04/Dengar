@@ -1,9 +1,10 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { activeCluster, district, heat, kpis, trend, watchAreas, type Tone } from '@/data/district';
+import { DirectiveRecord } from '@/components/DirectiveRecord';
+import { activeCluster, district, heat, kpis, trend, type Tone } from '@/data/district';
+import { acknowledge, useAcknowledgement, useAlertFeed, type DirectiveState } from '@/store/dispatch';
 
 // Officer HOME — Trend (gated direction officer-e, plus John's two amendments).
 //
@@ -17,6 +18,10 @@ import { activeCluster, district, heat, kpis, trend, watchAreas, type Tone } fro
 // break is two 1px Views under `transform: rotate`, the heat grid is 28 Views whose alpha comes
 // from `opacity` on an `o-alert` ground (so the ramp composites over the real parent without any
 // hand-written rgba), and the bracket is 1px rules either side of a pill.
+//
+// Slice 15: the directive's acknowledged/unacknowledged state moved out of this screen into
+// `store/dispatch.ts`, so signing it here, on the cluster sheet, or from the alert feed updates
+// all three at once.
 //
 // Tokens only — every color is a named officer token from tailwind.tokens.js.
 
@@ -72,8 +77,24 @@ function Spark({ data, tone }: { data: readonly number[]; tone: Tone }) {
   );
 }
 
+/**
+ * The watch row's state marker. A live directive burns alert-red, a signed one turns `o-ok`, and a
+ * plain watch area holds the column open with nothing in it — so acknowledging visibly changes this
+ * screen the instant it happens, without a second copy of the record's state living here.
+ */
+function StateDot({ state }: { state: DirectiveState }) {
+  if (state === 'watch') return <View style={{ width: 8, height: 8 }} />;
+  return (
+    <View
+      className={state === 'acknowledged' ? 'bg-o-ok' : 'bg-o-alert'}
+      style={{ width: 8, height: 8, borderRadius: 999 }}
+    />
+  );
+}
+
 export default function OfficerHome() {
-  const [acknowledged, setAcknowledged] = useState(false);
+  const ack = useAcknowledgement();
+  const feed = useAlertFeed();
 
   return (
     <SafeAreaView className="flex-1 bg-o-bg">
@@ -113,25 +134,32 @@ export default function OfficerHome() {
         {/* ── the directive ─────────────────────────────────────────────────
             John's amendment 1: officer-f's weight — a wide cobalt button-card, so the next action
             is unmistakable. Amendment 2: the banned red border-left stripe is gone; urgency is
-            carried by the cobalt ground itself and by the alert-toned figures elsewhere. */}
-        <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5">
-          <View className="flex-1">
-            {/* specs.md §1's directive, verbatim in intent: "fog here, within 48 hours". */}
-            <Text className="font-plex-semibold text-[17px] text-o-bg">Fog within 48 h</Text>
-            <Text numberOfLines={1} className="mt-[3px] font-mono text-[11px] text-o-surface">
-              {activeCluster.area} · {activeCluster.blocks}
-            </Text>
+            carried by the cobalt ground itself and by the alert-toned figures elsewhere.
+
+            Once signed it stops being an instruction and becomes the record on file — the same
+            component the cluster sheet renders, so the two can never drift apart. */}
+        {ack ? (
+          <View className="mx-5 mt-4">
+            <DirectiveRecord ack={ack} />
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setAcknowledged(true)}
-            className="min-h-[44px] shrink-0 justify-center rounded-card bg-o-bg px-4"
-            style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
-            <Text className="text-center font-plex-semibold text-[15px] text-o-primary">
-              {acknowledged ? 'Acknowledged' : 'Acknowledge'}
-            </Text>
-          </Pressable>
-        </View>
+        ) : (
+          <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5">
+            <View className="flex-1">
+              {/* specs.md §1's directive, verbatim in intent: "fog here, within 48 hours". */}
+              <Text className="font-plex-semibold text-[17px] text-o-bg">Fog within 48 h</Text>
+              <Text numberOfLines={1} className="mt-[3px] font-mono text-[11px] text-o-surface">
+                {activeCluster.area} · {activeCluster.blocks}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={acknowledge}
+              className="min-h-[44px] shrink-0 justify-center rounded-card bg-o-bg px-4"
+              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
+              <Text className="text-center font-plex-semibold text-[15px] text-o-primary">Acknowledge</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* ── the 14-day chart ──────────────────────────────────────────── */}
         <View className="mt-5 px-5">
@@ -288,14 +316,26 @@ export default function OfficerHome() {
 
         {/* ── watch areas ───────────────────────────────────────────────── */}
         <View className="mt-4 border-t border-o-line px-5 pt-3">
-          <Eyebrow>Watch areas</Eyebrow>
-          {watchAreas.map((w) => (
+          <View className="flex-row items-center justify-between">
+            <Eyebrow>Watch areas</Eyebrow>
+            <Link href="/officer/alerts" asChild>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Open the alert feed"
+                className="min-h-[44px] justify-center"
+                style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}>
+                <Text className="font-plex-medium text-[13px] text-o-primary">Alert feed ›</Text>
+              </Pressable>
+            </Link>
+          </View>
+          {feed.map(({ area: w, state }) => (
             <Link key={w.id} href={{ pathname: '/officer/cluster/[id]', params: { id: w.id } }} asChild>
               <Pressable
                 accessibilityRole="link"
                 className="min-h-[52px] flex-row items-center gap-3 border-b border-o-line py-3"
                 style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}>
-                <Text className="font-plex-medium text-[13px] text-o-ink" style={{ width: 92 }}>
+                <StateDot state={state} />
+                <Text className="font-plex-medium text-[13px] text-o-ink" style={{ width: 84 }}>
                   {w.name}
                 </Text>
                 <Spark data={w.spark} tone={w.tone} />
