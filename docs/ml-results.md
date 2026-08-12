@@ -83,6 +83,22 @@ Two design decisions did the work, and both are worth a slide if there's room:
 Training used the two augmentations from MosquitoSong+ (PLOS ONE 2024): noise mixing and
 wingbeat volume variation.
 
+## band-SNR — measured, and deliberately not shipped
+
+The third gate (specs.md §4) was measured and **does not work**, so it is not shipping. Values
+across 10 clips ran −9 to −30 dB, with *Aedes* clips scoring *lower* than non-*Aedes* — backwards.
+The formula's out-of-band term includes everything below 200 Hz, where handling noise and mains
+rumble dominate real recordings, so it measures rumble rather than band usability. It separates a
+synthetic 500 Hz tone from white noise by 25 dB and fails on real audio.
+
+**What this means for the pitch:** two of the three abstain states — "no mosquito detected" and
+"not confident" — are genuine model output. **"Too noisy" is a placeholder and must be narrated as
+simulated.** Declared simulation is fine (§8); concealed simulation is the disqualifier.
+
+If asked why: *"We measured it, it was measuring the wrong thing, and calibrating it properly needs
+recordings labelled unusable — which the dataset doesn't have. We'd rather declare it than ship a
+gate that passes garbage silently."*
+
 ## Limitations — state these before a judge finds them
 
 - **89 independent *Aedes* recordings** exist in HumBugDB (22.2 min *Ae. aegypti*, 0.7 min

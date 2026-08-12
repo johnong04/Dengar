@@ -192,7 +192,30 @@ table — that is the RED test, written before the implementation. Two independe
 functions will disagree slightly, the floor calibrated on one will not transfer to the other, and
 the gate will silently pass garbage. One written formula, one reference table, no drift.
 
-`ml/` fills this in: **band = ____ Hz … ____ Hz · window = ____ · floor = ____ dB**
+`ml/` fills this in (2026-08-12): **band = 200 Hz … 1500 Hz · window = 512-pt hann, hop 256,
+16 kHz · floor = NOT CALIBRATED — app keeps its marked placeholder.**
+
+Formula as measured: `10*log10(mean power in 200–1500 Hz / mean power outside that band up to
+4000 Hz)`, median over frames. Reference table for 10 clips is in `ml/out/band_snr.json`.
+
+**Read this before using the floor.** The measured values ran −9 to −30 dB, and *Aedes* clips
+scored *lower* than non-*Aedes* ones — the opposite of what the gate needs. Cause: the
+out-of-band term includes everything below 200 Hz, where handling noise and mains rumble carry
+most of the energy on real recordings, so the ratio measures rumble rather than whether the
+wingbeat band is usable. It separates a synthetic 500 Hz tone from white noise by 25 dB; it does
+not separate real recordings.
+
+Consequence, and it is a deliberate scope cut, not an oversight:
+
+- **MED and MSC ship real. band-SNR does not.** `too_noisy` remains driven by a placeholder and
+  **must be narrated as simulated** (§13 rule 3). The other two abstain states — `no_mosquito`
+  and `not_confident` — are genuine model output.
+- The fix is to exclude sub-200 Hz from both terms and recalibrate the floor against clips
+  actually labelled unusable. There are no such labels in HumBugDB, so this needs recordings we
+  do not have. Not a 30-minute job.
+- Do **not** ship a floor derived from the numbers above. A gate calibrated on a metric that
+  measures the wrong thing passes garbage silently, which is the exact failure this section was
+  written to prevent.
 
 ---
 
