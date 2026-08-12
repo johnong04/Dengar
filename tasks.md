@@ -15,7 +15,7 @@
 
 Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d (cluster map).
 
-- [ ] 11 warmth into law — tokens + design-system.md (hard)
+- [x] 11 warmth into law — tokens + design-system.md (hard)
 - [ ] 12 warmth applied to the 8 v1 citizen screens (hard)
 - [ ] 13 officer shell + Trend home (hard · board officer-e + CTA emphasis, stripe removed)
 - [ ] 14 officer cluster map on the real OSM basemap (hard · board officer-d)
