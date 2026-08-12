@@ -57,6 +57,22 @@
   a hazard every agent routes around privately is invisible to the run — the orchestrator only sees it
   when two reports mention the same workaround.
 
+- 2026-08-12 v2-full s2: **a subagent's stated cause can be wrong while its result is right.** Slice 20
+  fixed a zero-height bar and shipped a comment blaming react-native-web for dropping escaped-dot
+  Tailwind classes. Measured: `h-1.5` is 6px, the bars render exactly as claimed — the fix was right,
+  the diagnosis invented. It was one step from entering RESUME.md as a hard-won fact and taxing every
+  future agent. Promoted: the orchestrator measures any NEW platform fact before promoting it to law;
+  a fact that contradicts a working measurement is a finding, not a lesson.
+- 2026-08-12 v2-full s2: **the §2 language sweep passed in English and failed in Malay.** `tinjauan`
+  reads as "survey" where the English "outlook" does not breach. Every prior run's §2 sweep was
+  monolingual by construction and therefore proved less than it appeared to. Promoted: sweep every
+  shipped language, not the source language.
+- 2026-08-12 v2-full s2: **parallel dispatch of 4 mutually-independent slices worked with zero
+  conflicts** — but only after moving `git commit` from the agents to the orchestrator. Agents report
+  explicit paths; the orchestrator stages and commits. Four agents racing on `index.lock` is a failure
+  mode with no upside, and the orchestrator writing the message is what kept each commit honest about
+  what the slice actually did (including its unverified parts).
+
 ## §Empty gates (checks that ran and found nothing — demote after 3 consecutive empty runs)
 
 - 2026-08-12 v1-citizen: §2 language sweep — ran per-slice ×6 + full sweep in slice 8; **zero hits
@@ -67,6 +83,15 @@
   by construction. (1st empty run.)
 - 2026-08-12 v1-citizen: no-red audit on non-aedes surfaces — never failed; COMMON rule 4 held by
   construction across slices 3–8. (1st empty run.)
+
+- 2026-08-12 v2-full s2: §2 language sweep (ENGLISH) — ran per-slice ×5, zero hits again. (2nd empty
+  run.) **But the Malay sweep found one on its first outing** — so the gate is not empty, it was
+  under-scoped. Do not demote on the English count.
+- 2026-08-12 v2-full s2: tap-target ≥44px — never failed across 19 route/states. (2nd empty run.)
+- 2026-08-12 v2-full s2: **430px viewport — REVERSES v1's demote-candidate note.** v1 called it
+  possibly redundant alongside 390. Session 2 found a 430-only defect 390 could not see: `fitFocus`
+  scales by width alone, so a fixed-height map box framed correctly at 390 and sliced the
+  neighbourhood outline off at 430. The gate earned its place; keep it.
 
 ## Cost gauge (v1-citizen)
 
