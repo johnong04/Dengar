@@ -10,8 +10,27 @@ Every completed slice is committed. The app is demoable at this commit.
 | 11 warmth into law | PASS — verified independently (40/40 doc↔config parity, 87 contrast pairs) |
 | 12 warm citizen screens | PASS after 1 fix (pulse rings actually render now) |
 | 13 officer Trend home | PASS after 1 fix (every figure derived from 3 area sparklines) |
-| 14 officer cluster map | BUILT + committed; **evaluator was mid-run when paused** |
+| 14 officer cluster map | BUILT + committed; **NOT marked PASS** — see below |
 | 17 static-node mode | PASS (smoke) |
+
+## Slice 14 — partially verified, do NOT treat as passed
+
+Its evaluator died to a 529 twice without completing. The orchestrator verified the one piece of
+load-bearing arithmetic by hand — expected values computed from first principles, not by reusing
+`geo.ts`'s own `mercatorY`:
+
+- four corners exact to ≤1e-6 px, all `inside: true`
+- mid-latitude **384.0030940005** vs naive lerp **384** → deviation 3.094e-3 px. **Mercator confirmed**;
+  a lerp would have returned exactly 384
+- round-trip error 4.88e-15 deg
+- out-of-bounds (3.30, 101.80) → (2064.0, −1674.1), `inside: false` — extrapolates and flags rather
+  than clamping, which is right: a clamped dot sits on the frame edge and reads as real data in the
+  wrong place
+
+**Still unverified on slice 14:** contrast table, per-dot ground check (does any dot land on a
+carriageway / water / the green reserve / inside Kem Wardieburn), attribution at both viewports across
+all three cluster ids, cross-screen figure consistency against the officer home, and rubric grades.
+These roll into slice 21's whole-app pass — do not let slice 21 assume they were done.
 
 ## Not started — nothing written, safe to dispatch fresh
 
