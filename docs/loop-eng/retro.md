@@ -32,6 +32,19 @@
   animated transform instead of the painted box. Promoted: a motion floor requires (1) non-zero computed
   geometry on the animated element and (2) two screenshots at different phases that visibly differ.
 
+- 2026-08-12 v2-full: **an untracked orphan file can red-line the shared gate for every concurrent
+  agent.** A dead slice left `components/Roadmap.tsx` referencing routes it never created; Expo typed
+  routes rejected it, so `npm run check` failed for two unrelated makers, who each spent a step
+  diagnosing "not mine". A shared red gate is how a real failure gets skimmed past. Promoted: when a
+  slice dies, the orchestrator parks its orphans OUT of the source tree before dispatching anything else.
+- 2026-08-12 v2-full: **transient API failures are survivable at zero work-loss, and the reason is
+  per-slice commits plus explicit-path staging.** Five 529s: two agents lost mid-build recovered fully
+  by resume-with-state-summary, three died before writing and cost only wall-clock. The context-reset
+  design was built for token limits; it turns out to be the same mechanism that makes server errors
+  cheap. Corollary learned the hard way: my first hypothesis (concurrency was provoking them) was
+  refuted when one hit with 2 agents running — do not attribute infrastructure noise to a controllable
+  cause without evidence.
+
 ## §Empty gates (checks that ran and found nothing — demote after 3 consecutive empty runs)
 
 - 2026-08-12 v1-citizen: §2 language sweep — ran per-slice ×6 + full sweep in slice 8; **zero hits
@@ -47,15 +60,3 @@
 
 Slices ~55–100k subagent tokens each; slice 8 (polish, widest scope) 139k/97 tool-uses — proportional,
 not thrash. Evaluators ~70–78k each. One fix cycle total across 4 hard slices. No outliers flagged.
-- 2026-08-12 v2-full: **an untracked orphan file can red-line the shared gate for every concurrent
-  agent.** A dead slice left `components/Roadmap.tsx` referencing routes it never created; Expo typed
-  routes rejected it, so `npm run check` failed for two unrelated makers, who each spent a step
-  diagnosing "not mine". A shared red gate is how a real failure gets skimmed past. Promoted: when a
-  slice dies, the orchestrator parks its orphans OUT of the source tree before dispatching anything else.
-- 2026-08-12 v2-full: **transient API failures are survivable at zero work-loss, and the reason is
-  per-slice commits plus explicit-path staging.** Five 529s: two agents lost mid-build recovered fully
-  by resume-with-state-summary, three died before writing and cost only wall-clock. The context-reset
-  design was built for token limits; it turns out to be the same mechanism that makes server errors
-  cheap. Corollary learned the hard way: my first hypothesis (concurrency was provoking them) was
-  refuted when one hit with 2 agents running — do not attribute infrastructure noise to a controllable
-  cause without evidence.
