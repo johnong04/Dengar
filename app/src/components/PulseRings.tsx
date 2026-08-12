@@ -10,6 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import tokens from '../../tailwind.tokens.js';
+
 /**
  * The Listen instrument. Warm-board geometry (design-system.md §Warm revision): the hairline rings
  * became two FILLED halo rings (`halo-outer` 264 / `halo-inner` 224) around a saturated `primary`
@@ -32,6 +34,17 @@ type Props = {
 };
 
 const RING = 264;
+
+// Token value read through the single palette source, so no hex literal enters a screen file.
+const RIM = {
+  position: 'absolute' as const,
+  width: RING,
+  height: RING,
+  borderRadius: RING / 2,
+  borderWidth: 1,
+  borderColor: tokens.colors.primary,
+  pointerEvents: 'none' as const,
+};
 
 export function PulseRings({
   mode,
@@ -91,15 +104,12 @@ export function PulseRings({
         style={{ pointerEvents: 'none' }}
         className="absolute h-[224px] w-[224px] rounded-full bg-halo-inner"
       />
-      {/* breathing rims — drawn over the halos so they read as they expand past the outer edge */}
-      <Animated.View
-        style={[ring1, { pointerEvents: 'none' }]}
-        className="absolute h-[264px] w-[264px] rounded-full border border-primary"
-      />
-      <Animated.View
-        style={[ring2, { pointerEvents: 'none' }]}
-        className="absolute h-[264px] w-[264px] rounded-full border border-primary"
-      />
+      {/* breathing rims — drawn over the halos so they read as they expand past the outer edge.
+          Geometry lives in `style`, NOT className: react-native-web silently drops className on a
+          reanimated Animated.View (same trap documented at result.tsx's drench), which left both
+          rims at 0×0 with no border — an animation running on nothing. */}
+      <Animated.View style={[ring1, RIM]} />
+      <Animated.View style={[ring2, RIM]} />
       <Pressable
         onPress={onPress}
         disabled={disabled}

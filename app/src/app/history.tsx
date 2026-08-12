@@ -104,7 +104,7 @@ function Row({
               {aedes ? 'Aedes' : 'Not Aedes'}
             </Text>
             {!detection.synced && (
-              <View className="ml-2 rounded-pill bg-surface-raised px-2 py-[2px]">
+              <View className="ml-2 rounded-pill bg-surface-raised px-2 py-1">
                 <Text className="font-mono text-[12px] text-caution">queued</Text>
               </View>
             )}
