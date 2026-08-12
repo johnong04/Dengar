@@ -32,26 +32,23 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
 - [x] M1 `ml/dengar.py` — data + train + export in one script, Colab-only
 - [x] M2 TFLite conversion verified locally before any Colab run (380k params, 1.45 MB,
       `[1,80000]` in / `[1,2]` out, matches Keras to 7dp). Project's named #1 risk, closed.
-- [ ] M3 `data` — download + window cache, confirm per-class counts
-- [ ] M4 `train --task msc` — the product model, `[aedes, not_aedes]`
-- [ ] M5 `train --task med` + `--task tri`
-- [ ] M6 `export` — tflite + tfjs + band-SNR floor and reference table into specs.md §4
+- [x] M3 `data` — 783 aedes windows from all 89 recordings, 2000 not_aedes from 2000 files
+- [x] M4/M5 all three tasks × both architectures, 16 min on a T4. macro-F1 on held-out
+      **recordings** (not windows): **msc 0.840** (acc 0.849, 523 test recordings) ·
+      **med 0.924** (1000) · tri 0.602 (585)
+- [ ] M6 `export` — tflite written; band-SNR floor + reference table still to land in specs.md §4
 - [ ] M7 three demo clips (clean Aedes / non-Aedes / correctly-abstaining noisy)
 - [ ] M8 stretch: real in-browser inference on Expo web, behind `classify()`
 
-### If MSC comes back weak — two upgrades, in this order, measured not assumed
+### The two upgrades — both now CLOSED, neither needed
 
-Trigger: MSC accuracy under ~75%. Not to be done pre-emptively.
-
-1. **ImageNet-pretrained MobileNetV2** on the spectrograms instead of the from-scratch CNN
-   (~30 min). The one real compromise in the current design is no transfer learning: we train
-   from scratch on **89 independent *Aedes* recordings**. Pretraining is the standard fix for
-   data that small, and MobileNetV2 is the canonical TFLite model so conversion stays safe.
-2. **Wingbeats** ([Kaggle, 85,553 *Ae. aegypti* clips](https://www.kaggle.com/datasets/potamitis/wingbeats))
-   folded into training, HumBugDB held out for test (~40 min). **Handle with care:** Wingbeats
-   was recorded by optoelectronic sensors, not microphones. Training on it and reporting the
-   result as phone-mic performance is the invented-figure defect class — the accuracy would be
-   high and meaningless. Only valid with a mic-recorded held-out test set and stated on camera.
+1. ~~ImageNet-pretrained MobileNetV2~~ **measured and lost, on all three tasks**
+   (msc 0.473 vs 0.840, med 0.705 vs 0.924, tri 0.247 vs 0.602). MobileNet needs the
+   spectrogram resized to 96×96, which destroys the frequency resolution that wingbeat
+   identity consists of. The from-scratch CNN is also 7× smaller — 380k params, 1.5 MB.
+   Transfer learning was the right hypothesis and the data rejected it.
+2. ~~Wingbeats~~ **not needed** — msc cleared its trigger by a wide margin, so the
+   optoelectronic-vs-microphone domain-shift risk never has to be taken or explained.
 
 Not doing: Oxford's released weights (PyTorch ResNet/VGG with MC-dropout sampling — a four-step
 conversion chain, and TFLite strips dropout silently, so the Bayesian part would vanish without
