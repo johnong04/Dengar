@@ -143,18 +143,21 @@ export default function Capture() {
       <View className="flex-1 px-5">
         {/* status row — fixed height so the sync chip appearing/disappearing never shifts layout */}
         <View className="mt-4 h-8 flex-row items-center justify-between">
-          <Text className="font-plex-semibold text-[15px] text-ink">Dengar</Text>
+          <Text className="font-plex-semibold text-[17px] text-ink">Dengar</Text>
           <View className="flex-row items-center gap-2">
             <SyncChip />
-            {/* mic state: blue = live, muted = closed (analyzing), green = ready */}
-            <View
-              className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : analyzing ? 'bg-muted' : 'bg-ok'}`}
-            />
-            <Text className="font-mono text-[12px] text-muted">{micLabel}</Text>
+            {/* mic state on the trust tint: bright green = ready, blue = live, muted = closed */}
+            <View className="flex-row items-center gap-2 rounded-pill bg-tint-trust px-3 py-1">
+              <View
+                className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : analyzing ? 'bg-muted' : 'bg-ok-bright'}`}
+              />
+              <Text className="font-mono text-[12px] text-tint-trust-ink">{micLabel}</Text>
+            </View>
           </View>
         </View>
 
-        {/* instrument */}
+        {/* instrument — the flex-1 slack lives HERE, above the guidance block, so the guidance and
+            the footer sit as one grouped foot instead of straddling a dead vertical gap */}
         <View className="flex-1 items-center justify-center">
           <PulseRings
             mode={phase}
@@ -165,74 +168,71 @@ export default function Capture() {
           >
             {phase === 'idle' && (
               <Animated.View entering={enter} className="items-center">
-                <View className="h-3 w-3 rounded-full bg-primary" />
-                <Text className="mt-3 font-plex-semibold text-[17px] text-ink">Listen</Text>
-                <Text className="mt-1 font-mono text-[12px] text-muted">5.0 s</Text>
+                <Text className="font-plex-semibold text-[24px] text-bg">Listen</Text>
+                <Text className="mt-1 font-mono text-[13px] text-bg">5.0 s</Text>
               </Animated.View>
             )}
             {listening && (
               <Animated.View entering={enter} className="items-center">
                 <View className="flex-row items-end">
-                  <Text className="font-mono-medium text-[38px] leading-[42px] text-ink">
+                  <Text className="font-mono-medium text-[38px] leading-[42px] text-bg">
                     {remaining.toFixed(1)}
                   </Text>
-                  <Text className="mb-[6px] ml-1 font-mono text-[15px] text-muted">s</Text>
+                  <Text className="mb-[6px] ml-1 font-mono text-[15px] text-bg">s</Text>
                 </View>
                 <View className="mt-3">
-                  <LevelMeter source={source} />
+                  <LevelMeter source={source} variant="on-primary" />
                 </View>
               </Animated.View>
             )}
             {analyzing && (
               <Animated.View entering={enter} className="items-center">
-                <Text className="font-mono text-[13px] text-muted">reading wingbeat…</Text>
+                <Text className="font-mono text-[13px] text-bg">reading wingbeat…</Text>
               </Animated.View>
             )}
           </PulseRings>
 
           {phase === 'idle' && (
             <Animated.View entering={enter} className="items-center">
-              <Text className="mt-8 text-center font-plex-semibold text-[24px] leading-8 text-ink">
+              <Text className="mt-8 text-center font-plex-bold text-[30px] leading-9 text-ink">
                 Identify the mosquito{'\n'}that found you
-              </Text>
-              <Text className="mt-3 text-center font-plex text-[15px] leading-[22px] text-muted">
-                Hold your phone within 10 cm.{'\n'}Trapped under a glass works best.
               </Text>
             </Animated.View>
           )}
           {listening && (
             <Animated.View entering={enter} className="items-center">
-              <Text className="mt-8 text-center font-plex text-[15px] leading-[22px] text-muted">
-                Hold your phone within 10 cm.{'\n'}Trapped under a glass works best.
-              </Text>
               <Pressable
                 onPress={cancel}
                 accessibilityRole="button"
-                className="mt-4 min-h-[44px] items-center justify-center px-6 py-3 active:opacity-70"
+                className="mt-8 min-h-[44px] items-center justify-center px-6 py-3 active:opacity-70"
               >
                 <Text className="font-plex-medium text-[15px] text-muted">Cancel</Text>
               </Pressable>
             </Animated.View>
           )}
+        </View>
 
-          <Text className="mt-8 font-mono text-[12px] text-muted">
+        {/* guidance — the instruction and the machine spec it runs at, one block, warm light */}
+        <View className="mb-4 items-center rounded-block bg-tint-guide px-5 py-4">
+          <Text className="text-center font-plex text-[16px] leading-6 text-tint-guide-ink">
+            Hold your phone within 10 cm.{'\n'}Trapped under a glass works best.
+          </Text>
+          <Text className="mt-3 font-mono text-[12px] text-tint-guide-mono">
             16 kHz · mono · band-SNR gate armed
           </Text>
         </View>
 
-        {/* footer */}
-        <View className="border-t border-line pb-4">
-          <View className="flex-row items-center justify-between">
-            <Link href="/history" asChild>
-              <Pressable
-                accessibilityRole="link"
-                className="min-h-[44px] justify-center py-4 pr-6 active:opacity-70"
-              >
-                <Text className="font-plex-medium text-[15px] text-ink">History</Text>
-              </Pressable>
-            </Link>
-            <Text className="font-mono text-[13px] text-muted">{tally}</Text>
-          </View>
+        {/* footer — a filled raised row, not a hairline rule */}
+        <View className="mb-4 flex-row items-center justify-between rounded-block bg-surface-raised px-5">
+          <Link href="/history" asChild>
+            <Pressable
+              accessibilityRole="link"
+              className="min-h-[52px] justify-center pr-6 active:opacity-70"
+            >
+              <Text className="font-plex-medium text-[15px] text-ink">History</Text>
+            </Pressable>
+          </Link>
+          <Text className="font-mono text-[13px] text-muted">{tally}</Text>
         </View>
       </View>
     </SafeAreaView>

@@ -44,9 +44,12 @@ function detailInline(d: Detection): string | null {
 
 type ReadoutRow = { label: string; value: string; suffix?: string };
 
-/** The full readout the row stands behind — same grammar as the result surface. */
+/**
+ * What the collapsed row does NOT already say. Confidence is deliberately absent: the collapsed row
+ * shows it at the same size in the same font, and repeating it made the expansion read as padding.
+ */
 function readoutRows(d: Detection): ReadoutRow[] {
-  const rows: ReadoutRow[] = [{ label: 'Confidence', value: score(d.confidence) }];
+  const rows: ReadoutRow[] = [];
   if (d.detail?.taxon?.name && typeof d.detail.taxon.confidence === 'number')
     rows.push({ label: 'Species', value: d.detail.taxon.name, suffix: `· ${score(d.detail.taxon.confidence)}` });
   if (d.detail?.sex?.value && typeof d.detail.sex.confidence === 'number')
@@ -69,11 +72,13 @@ function backToCapture() {
 
 function Row({
   detection,
+  first,
   expanded,
   onPress,
   reducedMotion,
 }: {
   detection: Detection;
+  first: boolean;
   expanded: boolean;
   onPress: () => void;
   reducedMotion: boolean;
@@ -84,22 +89,22 @@ function Row({
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   return (
-    <View className="border-b border-line">
+    <View className={first ? '' : 'border-t border-line'}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        className="min-h-[44px] flex-row items-center justify-between py-3 active:opacity-70"
+        className="min-h-[52px] flex-row items-center justify-between py-4 active:opacity-70"
       >
         <View className="shrink pr-4">
           <View className="flex-row items-center">
             {/* the one red allowed outside the drench: the vector's mark in the log */}
             {aedes && <View className="mr-2 h-2 w-2 rounded-full bg-alert" />}
-            <Text className="font-plex-medium text-[15px] text-ink">
+            <Text className="font-plex-medium text-[16px] text-ink">
               {aedes ? 'Aedes' : 'Not Aedes'}
             </Text>
             {!detection.synced && (
-              <View className="ml-2 rounded-full border border-caution px-2 py-[1px]">
+              <View className="ml-2 rounded-pill bg-surface-raised px-2 py-[2px]">
                 <Text className="font-mono text-[12px] text-caution">queued</Text>
               </View>
             )}
@@ -107,27 +112,32 @@ function Row({
           {inline && <Text className="mt-1 font-plex text-[13px] text-muted">{inline}</Text>}
         </View>
         <View className="items-end">
-          <Text className="font-mono text-[15px] text-ink">{score(detection.confidence)}</Text>
+          <Text className="font-mono-medium text-[17px] text-ink">{score(detection.confidence)}</Text>
           <Text className="mt-1 font-mono text-[12px] text-muted">{timeLabel(detection.at)}</Text>
         </View>
       </Pressable>
 
       {expanded && (
-        <Animated.View entering={enter} className="pb-3">
-          {rows.map((row, i) => (
-            <View
-              key={row.label}
-              className={`flex-row items-center justify-between py-3 ${i === 0 ? '' : 'border-t border-line'}`}
-            >
-              <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
-              <Text className="font-mono text-[15px] text-ink">
-                {row.value}
-                {row.suffix ? (
-                  <Text className="font-mono text-[15px] text-muted"> {row.suffix}</Text>
-                ) : null}
-              </Text>
-            </View>
-          ))}
+        <Animated.View entering={enter} className="pb-4">
+          {/* depth 2 inside the list surface — the full readout the row stands behind */}
+          <View className="rounded-block bg-surface-raised px-4">
+            {rows.map((row, i) => (
+              <View
+                key={row.label}
+                className={`flex-row items-center justify-between py-3 ${
+                  i === 0 ? '' : 'border-t border-line'
+                }`}
+              >
+                <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
+                <Text className="font-mono text-[15px] text-ink">
+                  {row.value}
+                  {row.suffix ? (
+                    <Text className="font-mono text-[15px] text-muted"> {row.suffix}</Text>
+                  ) : null}
+                </Text>
+              </View>
+            ))}
+          </View>
         </Animated.View>
       )}
     </View>
@@ -167,15 +177,15 @@ export default function History() {
           // Empty log teaches what the log is for — a beginning, not a failure state.
           <View className="flex-1 items-center justify-center pb-16">
             <Text className="text-center font-plex-semibold text-[20px] leading-7 text-ink">
-              Your detections build{'\n'}your district's map.
+              Your detections build{'\n'}your district&apos;s map.
             </Text>
-            <Text className="mt-3 text-center font-plex text-[15px] leading-[22px] text-muted">
+            <Text className="mt-3 text-center font-plex text-[16px] leading-6 text-muted">
               The first one starts the moment{'\n'}a mosquito finds you.
             </Text>
             <Pressable
               onPress={backToCapture}
               accessibilityRole="button"
-              className="mt-8 min-h-[44px] items-center justify-center px-6 py-3 active:opacity-70"
+              className="mt-8 min-h-[44px] items-center justify-center rounded-pill bg-surface px-6 py-3 active:opacity-70"
             >
               <Text className="font-plex-medium text-[15px] text-primary">
                 Identify the mosquito that found you
@@ -183,12 +193,14 @@ export default function History() {
             </Pressable>
           </View>
         ) : (
-          <ScrollView className="mt-8 flex-1" contentContainerClassName="pb-8">
-            <View className="border-t border-line">
-              {ordered.map((d) => (
+          <ScrollView className="mt-6 flex-1" contentContainerClassName="pb-8">
+            {/* the log is one filled surface; the rules are dividers inside it */}
+            <View className="rounded-block bg-surface px-5">
+              {ordered.map((d, i) => (
                 <Row
                   key={d.id}
                   detection={d}
+                  first={i === 0}
                   expanded={expandedId === d.id}
                   onPress={() => setExpandedId((cur) => (cur === d.id ? null : d.id))}
                   reducedMotion={reducedMotion}

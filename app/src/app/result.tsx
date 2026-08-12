@@ -12,10 +12,14 @@ import {
   type Species,
   type SpeciesDetail,
 } from '@/inference/gating';
+import { DRENCH_STOPS } from '@/lib/drench';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { add as addDetection } from '@/store/detections';
 
 type AbstainReason = 'no_mosquito' | 'not_confident' | 'too_noisy';
+
+/** A reading measured against a floor — rendered as a fill track so the score is seen, not parsed. */
+type Fill = { value: number; floor: number };
 
 type ReadoutRow = {
   label: string;
@@ -25,6 +29,8 @@ type ReadoutRow = {
   suffix?: string;
   /** Bumps the value one scale step (17px, medium) — the row that explains this verdict. */
   prominent?: boolean;
+  /** The gating reading: draws a fill track under the row, value against its floor. */
+  fill?: Fill;
 };
 
 type AbstainCopy = {
@@ -38,14 +44,30 @@ type AbstainCopy = {
 // capture screen — the numbers the gates actually measured, absent when a gate never ran.
 const score = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? n.toFixed(2) : '—');
 const db = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? `${n.toFixed(1)} dB` : '—');
+/** No reading → no track. A gate that never ran gets a dash, never an invented bar. */
+const fillOf = (n: number | undefined, floor: number): Fill | undefined =>
+  typeof n === 'number' && isFinite(n) ? { value: n, floor } : undefined;
+
 const AUDIO_ROW: ReadoutRow = { label: 'Audio kept', value: 'no', suffix: '· deleted on device' };
+
+// The privacy claim, promoted out of the body paragraph into its own trust block — the warm board's
+// single best move, and abstain is ~90% of what a user ever sees. It stands on every abstain and on
+// no other screen: an abstain writes nothing, so "nothing was saved" is unconditionally true here,
+// while a detected verdict CAN be logged.
+const TRUST_TAG = 'nothing kept';
+const TRUST_LINE = 'Nothing was saved; nothing left your phone.';
 
 const ABSTAIN_COPY: Record<AbstainReason, AbstainCopy> = {
   no_mosquito: {
     headline: 'No mosquito\nin this recording',
-    body: "The clip carried no wingbeat signature. Most recordings end here — a clean no is what keeps the map honest. Nothing was saved; nothing left your phone.",
+    body: 'The clip carried no wingbeat signature. Most recordings end here — a clean no is what keeps the map honest.',
     rows: (r) => [
-      { label: 'Event score', value: score(r.medScore), suffix: `/ floor ${MED_THRESHOLD.toFixed(2)}` },
+      {
+        label: 'Event score',
+        value: score(r.medScore),
+        suffix: `/ floor ${MED_THRESHOLD.toFixed(2)}`,
+        fill: fillOf(r.medScore, MED_THRESHOLD),
+      },
       {
         label: 'Band SNR',
         value: db(r.bandSnrDb),
@@ -65,6 +87,7 @@ const ABSTAIN_COPY: Record<AbstainReason, AbstainCopy> = {
         value: score(r.mscMax),
         suffix: `/ floor ${MSC_THRESHOLD.toFixed(2)}`,
         prominent: true,
+        fill: fillOf(r.mscMax, MSC_THRESHOLD),
       },
       AUDIO_ROW,
     ],
@@ -79,6 +102,7 @@ const ABSTAIN_COPY: Record<AbstainReason, AbstainCopy> = {
         value: db(r.bandSnrDb),
         suffix: `/ floor ${BAND_SNR_FLOOR_DB} dB`,
         prominent: true,
+        fill: fillOf(r.bandSnrDb, BAND_SNR_FLOOR_DB),
       },
       { label: 'Event score', value: score(r.medScore), suffix: '· not judged' },
       AUDIO_ROW,
@@ -152,6 +176,65 @@ function useCaptureStamp(): string {
   return stamp.current;
 }
 
+/**
+ * The gating reading as a bar: fill = value / floor, clamped. Below the floor it is `caution`
+ * (design-system.md: "sub-floor reading, gauge fill below threshold"); at or above it is `ok`.
+ * This is what turns "0.21 / floor 0.50" from a sentence to be parsed into a distance to be seen.
+ */
+function FillTrack({ fill }: { fill: Fill }) {
+  const ratio = Math.max(0, Math.min(1, fill.value / fill.floor));
+  const passed = fill.value >= fill.floor;
+  return (
+    <View className="mt-3 h-1 w-full overflow-hidden rounded-pill bg-line">
+      <View
+        className={`h-full rounded-pill ${passed ? 'bg-ok' : 'bg-caution'}`}
+        style={{ width: `${ratio * 100}%` }}
+      />
+    </View>
+  );
+}
+
+/** The readouts, grouped in one filled surface with hairline dividers INSIDE it (never around it). */
+function Readouts({ rows }: { rows: ReadoutRow[] }) {
+  return (
+    <View className="mt-6 rounded-block bg-surface px-5">
+      {rows.map((row, i) => (
+        <View key={row.label} className={i === 0 ? 'py-4' : 'border-t border-line py-4'}>
+          <View className="flex-row items-center justify-between">
+            <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
+            <Text
+              className={
+                row.prominent
+                  ? 'font-mono-medium text-[17px] text-ink'
+                  : 'font-mono text-[15px] text-ink'
+              }
+            >
+              {row.value}{' '}
+              {row.suffix ? (
+                <Text className="font-mono text-[15px] text-muted">{row.suffix}</Text>
+              ) : null}
+            </Text>
+          </View>
+          {row.fill ? <FillTrack fill={row.fill} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** The promoted privacy claim: cool trust tint, mono tag, prose in ink. Abstain screens only. */
+function TrustBlock() {
+  return (
+    <View className="mt-6 rounded-block bg-tint-trust px-5 py-4">
+      <View className="flex-row items-center gap-2">
+        <View className="h-1.5 w-1.5 rounded-full bg-ok-bright" />
+        <Text className="font-mono text-[12px] text-tint-trust-ink">{TRUST_TAG}</Text>
+      </View>
+      <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">{TRUST_LINE}</Text>
+    </View>
+  );
+}
+
 type DetectedParams = { species?: string; confidence?: string; detail?: string };
 
 /**
@@ -211,11 +294,20 @@ function Detected({
       .filter(Boolean)
       .join(' · ');
     return (
-      <View className="flex-1 bg-bg">
-        {/* explicit flex style + inner plain View for the drench: className styles are not applied
-            reliably on reanimated views (web), so the red lives on a regular View */}
+      <View className="flex-1 bg-verdict-aedes">
+        {/* explicit flex style: className styles are not applied reliably on reanimated views (web),
+            so the drench lives on plain Views underneath */}
         <Animated.View entering={reveal} style={{ flex: 1 }}>
-          <SafeAreaView className="flex-1 bg-verdict-aedes">
+          {/* the drench: 28 solid bands from → to, a vertical gradient with no dependency */}
+          <View
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}
+          >
+            {DRENCH_STOPS.map((band, i) => (
+              <View key={i} style={{ flex: 1, backgroundColor: band }} />
+            ))}
+          </View>
+
+          <SafeAreaView className="flex-1">
             <View className="flex-1 px-5">
               {/* top row */}
               <View className="flex-row items-center justify-between pt-4">
@@ -234,33 +326,39 @@ function Detected({
 
               {/* verdict */}
               <View className="mt-12">
-                <Text className="font-plex-bold text-[56px] leading-[60px] text-white">Aedes.</Text>
+                <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
+                  Aedes.
+                </Text>
                 <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
                   The mosquito that found you{'\n'}carries dengue.
                 </Text>
 
+                {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
                 <View className="mt-8 flex-row items-baseline gap-3">
-                  <Text className="font-mono-medium text-[30px] text-white">{pct}%</Text>
+                  <Text className="font-mono-medium text-[30px] text-warm-white">{pct}%</Text>
                   <Text className="font-mono text-[13px] text-verdict-aedes-soft">{context}</Text>
                 </View>
-                <View className="mt-3 h-[3px] w-full bg-verdict-aedes-line">
-                  <View className="h-full bg-white" style={{ width: `${pct}%` }} />
+                <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
+                  <View
+                    className="h-full rounded-pill bg-warm-white"
+                    style={{ width: `${pct}%` }}
+                  />
                 </View>
 
-                {/* fine-grained heads — rows exist only when a head reported (specs.md §6) */}
+                {/* fine-grained heads, recessed — rows exist only when a head reported (specs §6) */}
                 {rows.length > 0 && (
-                  <View className="mt-8">
+                  <View className="mt-8 rounded-block bg-verdict-aedes-sunken px-5">
                     {rows.map((row, i) => (
                       <View
                         key={row.label}
-                        className={`flex-row items-center justify-between border-t border-verdict-aedes-line py-3 ${
-                          i === rows.length - 1 ? 'border-b' : ''
+                        className={`flex-row items-center justify-between py-4 ${
+                          i === 0 ? '' : 'border-t border-verdict-aedes-line'
                         }`}
                       >
                         <Text className="font-plex text-[15px] text-verdict-aedes-soft">
                           {row.label}
                         </Text>
-                        <Text className="font-mono text-[15px] text-white">
+                        <Text className="font-mono text-[15px] text-warm-white">
                           {row.value}{' '}
                           <Text className="font-mono text-[15px] text-verdict-aedes-soft">
                             {row.suffix}
@@ -271,10 +369,16 @@ function Detected({
                   </View>
                 )}
 
-                <Text className="mt-8 font-plex text-[15px] leading-[22px] text-verdict-aedes-soft">
-                  Logging this puts one more point on your district's map. Fourteen detections in 72
-                  hours is what sends a fogging truck.
-                </Text>
+                {/* the stakes, raised */}
+                <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
+                  <Text className="font-mono text-[12px] text-verdict-aedes-soft">
+                    why this matters
+                  </Text>
+                  <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">
+                    Logging this puts one more point on your district&apos;s map. Fourteen detections
+                    in 72 hours is what sends a fogging truck.
+                  </Text>
+                </View>
               </View>
 
               <View className="flex-1" />
@@ -285,9 +389,9 @@ function Detected({
                   onPress={log}
                   disabled={logged}
                   accessibilityRole="button"
-                  className="min-h-[52px] items-center justify-center rounded-[10px] bg-white py-4 active:opacity-90 disabled:opacity-60"
+                  className="min-h-[52px] items-center justify-center rounded-pill bg-warm-white py-4 active:opacity-90 disabled:opacity-60"
                 >
-                  <Text className="font-plex-semibold text-[17px] text-verdict-aedes">
+                  <Text className="font-plex-semibold text-[17px] text-verdict-aedes-deep">
                     Log detection
                   </Text>
                 </Pressable>
@@ -310,13 +414,15 @@ function Detected({
   }
 
   // not_aedes: quiet ground, never red. (Garbled species never reaches here — Result() routes it
-  // to the abstain fallback.)
+  // to the abstain fallback.) No trust block: this verdict CAN be logged, so "nothing was saved"
+  // would be a claim the screen cannot keep.
   const quietRows: ReadoutRow[] = [
     {
       label: 'Species call',
       value: confidence !== undefined ? score(confidence) : '—',
       suffix: confidence !== undefined ? `/ floor ${MSC_THRESHOLD.toFixed(2)}` : undefined,
       prominent: true,
+      fill: fillOf(confidence, MSC_THRESHOLD),
     },
     ...rows,
     AUDIO_ROW,
@@ -340,41 +446,18 @@ function Detected({
 
         <Animated.View entering={reveal} style={{ flex: 1 }}>
           {/* verdict */}
-          <View className="mt-12">
-            <Text className="font-plex-bold text-[38px] leading-[44px] text-ink">
+          <View className="mt-8">
+            <Text className="font-plex-bold text-[34px] leading-10 text-ink">
               Not a dengue{'\n'}vector
             </Text>
-            <Text className="mt-4 font-plex text-[15px] leading-[22px] text-muted">
-              The wingbeat was clear enough to judge, and it isn't an Aedes. Logging it still helps
-              your district's map — knowing where the vector isn't is data too.
+            <Text className="mt-4 font-plex text-[16px] leading-6 text-muted">
+              The wingbeat was clear enough to judge, and it isn&apos;t an Aedes. Logging it still
+              helps your district&apos;s map — knowing where the vector isn&apos;t is data too.
             </Text>
           </View>
 
           {/* the instrument says why, in its own units */}
-          <View className="mt-12">
-            {quietRows.map((row, i) => (
-              <View
-                key={row.label}
-                className={`flex-row items-center justify-between border-t border-line py-3 ${
-                  i === quietRows.length - 1 ? 'border-b' : ''
-                }`}
-              >
-                <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
-                <Text
-                  className={
-                    row.prominent
-                      ? 'font-mono-medium text-[17px] text-ink'
-                      : 'font-mono text-[15px] text-ink'
-                  }
-                >
-                  {row.value}{' '}
-                  {row.suffix ? (
-                    <Text className="font-mono text-[15px] text-muted">{row.suffix}</Text>
-                  ) : null}
-                </Text>
-              </View>
-            ))}
-          </View>
+          <Readouts rows={quietRows} />
 
           <View className="flex-1" />
 
@@ -385,7 +468,7 @@ function Detected({
                 onPress={log}
                 disabled={logged}
                 accessibilityRole="button"
-                className="min-h-[52px] items-center justify-center rounded-[10px] bg-primary py-4 active:opacity-90 disabled:opacity-60"
+                className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90 disabled:opacity-60"
               >
                 <Text className="font-plex-semibold text-[17px] text-bg">Log detection</Text>
               </Pressable>
@@ -449,45 +532,30 @@ export default function Result() {
         {/* explicit flex style: className flex-1 is not applied reliably on reanimated views (web) */}
         <Animated.View entering={reveal} style={{ flex: 1 }}>
           {/* verdict */}
-          <View className="mt-12">
-            <Text className="font-plex-bold text-[38px] leading-[44px] text-ink">
-              {copy.headline}
-            </Text>
-            <Text className="mt-4 font-plex text-[15px] leading-[22px] text-muted">{copy.body}</Text>
+          <View className="mt-8">
+            <Text className="font-plex-bold text-[34px] leading-10 text-ink">{copy.headline}</Text>
+            <Text className="mt-4 font-plex text-[16px] leading-6 text-muted">{copy.body}</Text>
           </View>
 
+          {/* the privacy claim, out of the paragraph and into its own block */}
+          <TrustBlock />
+
           {/* the instrument says why, in its own units */}
-          <View className="mt-12">
-            {rows.map((row, i) => (
-              <View
-                key={row.label}
-                className={`flex-row items-center justify-between border-t border-line py-3 ${
-                  i === rows.length - 1 ? 'border-b' : ''
-                }`}
-              >
-                <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
-                <Text
-                  className={
-                    row.prominent
-                      ? 'font-mono-medium text-[17px] text-ink'
-                      : 'font-mono text-[15px] text-ink'
-                  }
-                >
-                  {row.value} {row.suffix ? <Text className="font-mono text-[15px] text-muted">{row.suffix}</Text> : null}
-                </Text>
-              </View>
-            ))}
-          </View>
+          <Readouts rows={rows} />
 
           <View className="flex-1" />
 
           {/* next move */}
           <View className="gap-3 pb-4">
-            <Text className="text-center font-plex text-[13px] text-muted">{copy.guidance}</Text>
+            <View className="items-center">
+              <Text className="rounded-pill bg-tint-guide px-4 py-2 text-center font-plex text-[13px] text-tint-guide-ink">
+                {copy.guidance}
+              </Text>
+            </View>
             <Pressable
               onPress={backToCapture}
               accessibilityRole="button"
-              className="min-h-[52px] items-center justify-center rounded-[10px] bg-primary py-4 active:opacity-90"
+              className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90"
             >
               <Text className="font-plex-semibold text-[17px] text-bg">Listen again</Text>
             </Pressable>

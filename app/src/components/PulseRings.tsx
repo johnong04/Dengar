@@ -11,13 +11,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 /**
- * The Listen instrument: the board's 3-ring geometry (264 / 224 / 184) with the design-system
- * breathing pulse. Two phase-offset primary rings scale 1→1.12 and fade 0.35→0 over 1.6 s while
- * idle; listening tightens the loop (0.9 s, 1→1.06) — faster and smaller reads as "live".
- * Analyzing: the mic is closed, so the live-mic pulse stops — rings hold static while the center
- * copy carries the state.
+ * The Listen instrument. Warm-board geometry (design-system.md §Warm revision): the hairline rings
+ * became two FILLED halo rings (`halo-outer` 264 / `halo-inner` 224) around a saturated `primary`
+ * disc (184) — light gathering on the one control, instead of three thin outlines.
  *
- * Reduced motion: no animation at all — a single static primary ring at rest opacity.
+ * Motion is unchanged and is law (§Motion): two phase-offset primary rims scale 1→1.12 and fade
+ * 0.35→0 over 1.6 s while idle; listening tightens the loop (0.9 s, 1→1.06) — faster and smaller
+ * reads as "live". Analyzing: the mic is closed, so the live-mic pulse stops — the rims hold static
+ * while the center copy carries the state.
+ *
+ * Reduced motion: no animation at all — a single static primary rim at rest opacity.
  */
 type Props = {
   mode: 'idle' | 'listening' | 'analyzing';
@@ -79,6 +82,16 @@ export function PulseRings({
 
   return (
     <View className="items-center justify-center" style={{ width: RING, height: RING }}>
+      {/* filled halos — the depth the warm board replaced the hairlines with */}
+      <View
+        style={{ pointerEvents: 'none' }}
+        className="absolute h-[264px] w-[264px] rounded-full bg-halo-outer"
+      />
+      <View
+        style={{ pointerEvents: 'none' }}
+        className="absolute h-[224px] w-[224px] rounded-full bg-halo-inner"
+      />
+      {/* breathing rims — drawn over the halos so they read as they expand past the outer edge */}
       <Animated.View
         style={[ring1, { pointerEvents: 'none' }]}
         className="absolute h-[264px] w-[264px] rounded-full border border-primary"
@@ -87,20 +100,12 @@ export function PulseRings({
         style={[ring2, { pointerEvents: 'none' }]}
         className="absolute h-[264px] w-[264px] rounded-full border border-primary"
       />
-      <View
-        style={{ pointerEvents: 'none' }}
-        className="absolute h-[264px] w-[264px] rounded-full border border-line"
-      />
-      <View
-        style={{ pointerEvents: 'none' }}
-        className="absolute h-[224px] w-[224px] rounded-full border border-line"
-      />
       <Pressable
         onPress={onPress}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        className="h-[184px] w-[184px] items-center justify-center rounded-full bg-surface active:opacity-80"
+        className="h-[184px] w-[184px] items-center justify-center rounded-full bg-primary active:opacity-90"
       >
         {children}
       </Pressable>
