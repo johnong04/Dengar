@@ -75,3 +75,37 @@ Typed routes reject a link to a route that does not exist yet, so wire AFTER the
 
 Dispatch the remaining slices in this order: 16, 19, 15, 20, then 18, then 21. Slices 16/19/15/20 are
 mutually independent given the entry-point rule above.
+
+## How to run it (orchestrator protocol — you are the orchestrator, not the implementer)
+
+Engine: `~/.claude/commands/run-plans.md`, mode **hack** per `.claude/loop-eng-profile.md`. Plans live
+in `docs/loop-eng/plans/`; read `v2-full-COMMON.md` first, then the slice's own plan.
+
+- **One fresh subagent per slice.** `smoke` → effort medium, build + one happy-path assertion.
+  `hard` → effort high, plus its own skeptical screenshot **evaluator** (read-only, own browser
+  session, tuned to REFUTE) → **1 fix round** (profile knob, John lowered it from 2) →
+  flag-and-continue. Never halt the run; log survivors and move on. Slice 21 is the net.
+- **Concurrency rules that were paid for in defects:** each agent gets its own playwright session
+  (`-s=<name>`); nobody restarts the shared dev server on :8081; nobody uses `git add -A` (stage
+  explicit paths — the ml/ session commits to this same branch); when a slice dies, park its orphan
+  files OUT of `app/src/` before dispatching anything else, or the shared `npm run check` goes red for
+  everyone and a real failure gets skimmed past.
+- **Gate:** `cd app && npm run check` (tsc + gating.check + geo.check). Commit after every slice.
+- **Tell each evaluator to MEASURE, not assert.** Contrast composited up the ancestor chain; motion
+  proven by non-zero computed geometry plus two visibly-different frames; figures traced numeral by
+  numeral to specs.md §9 or shown with arithmetic.
+- **API note:** six transient 529s paused this run. Resume-on-failure is normal — `SendMessage` the
+  same agent with a state summary rather than restarting the slice. Two agents recovered fully that way.
+
+## Run-end duties (do not skip — these outlive the harness)
+
+1. `docs/loop-eng/retro.md` — BOTH ledgers. §Misses (process failure-modes, one line, promote
+   recurring ones into the command docs) and **§Empty gates** (checks that ran and found nothing, with
+   cost — same gate empty 3 runs → demote it). A run reporting no empty gates did not look.
+2. `docs/loop-eng/evals/2026-08-12-john-v1-citizen/INDEX.md` — one line per finding, marked `real` or
+   `noise`, with a runnable case where one exists. **Record noise too** — a case saying "must NOT
+   report this" is what stops a re-tuned reviewer getting louder.
+3. `docs/loop-eng/runs/2026-08-12-v2-full.md` — run report in the shape of the v1 one.
+4. Cost gauge: tokens per slice; an outlier that cost far more *yet passed* is a thrash signal.
+
+**`docs/loop-eng/handoff.md` is gitignored** — durable notes go in THIS file, not there.
