@@ -90,8 +90,10 @@ function FootprintBar({
         <Text className="font-plex-medium text-[13px] text-o-ink">{name}</Text>
         <Text className="font-mono text-[11px] text-o-muted">{detail}</Text>
       </View>
-      {/* Height goes on `style`, never on a `h-3.5` class: react-native-web drops the escaped-dot
-          class and the bar renders at height 0 — measured, not guessed. */}
+      {/* Height goes on `style` so the track and the fill are driven by one constant — the fill's
+          width is computed at runtime, and a class-set track height could drift from it silently.
+          NOT because decimal classes are broken: `h-1.5` measures 6px live, and `mt-1.5` on this
+          very line works. Bars measure 350x14, fill 135.1px = 38.6%, matching the stated share. */}
       <View className="mt-1.5 w-full flex-row" style={{ height: BAR_H }}>
         <View
           /* Blanket is a solid neutral mass, not an empty track: an outlined bar reads as a

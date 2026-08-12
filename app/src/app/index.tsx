@@ -224,14 +224,26 @@ export default function Capture() {
 
         {/* footer — a filled raised row, not a hairline rule */}
         <View className="mb-4 flex-row items-center justify-between rounded-block bg-surface-raised px-5">
-          <Link href="/history" asChild>
-            <Pressable
-              accessibilityRole="link"
-              className="min-h-[52px] justify-center pr-6 active:opacity-70"
-            >
-              <Text className="font-plex-medium text-[15px] text-ink">History</Text>
-            </Pressable>
-          </Link>
+          {/* Two peers in the foot, never a second CTA — Area is somewhere you go, not something
+              you do. The capture button stays the only thing on this screen that acts. */}
+          <View className="flex-row items-center">
+            <Link href="/history" asChild>
+              <Pressable
+                accessibilityRole="link"
+                className="min-h-[52px] justify-center pr-6 active:opacity-70"
+              >
+                <Text className="font-plex-medium text-[15px] text-ink">History</Text>
+              </Pressable>
+            </Link>
+            <Link href="/area" asChild>
+              <Pressable
+                accessibilityRole="link"
+                className="min-h-[52px] justify-center pr-6 active:opacity-70"
+              >
+                <Text className="font-plex-medium text-[15px] text-ink">Area</Text>
+              </Pressable>
+            </Link>
+          </View>
           <Text className="font-mono text-[13px] text-muted">{tally}</Text>
         </View>
 

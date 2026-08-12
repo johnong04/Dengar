@@ -14,6 +14,12 @@ const ROUTES = [
   ],
   // Not a direction sketch — the live token probe. Law, kept for every later slice.
   ['design system — token probe', ['/board/tokens']],
+  // Shipped screens, listed here and NOWHERE in the product. The officer surface must never be
+  // reachable from a citizen screen (audiences stay separate), and the v3 roadmap screens must not
+  // sit in product nav as if the capability existed. This menu is the demo's route list.
+  ['shipped — officer (v2)', ['/officer', '/officer/alerts']],
+  ['shipped — roadmap (v3, citizen)', ['/roadmap/privacy', '/roadmap/detail', '/roadmap/impact']],
+  ['shipped — roadmap (v3, officer)', ['/officer/roadmap/forecast', '/officer/roadmap/dispatch']],
 ] as const;
 
 export default function BoardIndex() {
