@@ -36,6 +36,27 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
 - [x] M4/M5 all three tasks × both architectures, 16 min on a T4. macro-F1 on held-out
       **recordings** (not windows): **msc 0.840** (acc 0.849, 523 test recordings) ·
       **med 0.924** (1000) · tri 0.602 (585)
+
+#### The on-camera numbers — msc, the product model
+
+```
+                 predicted
+              aedes  not_aedes
+true aedes      226      9        recall 0.962, precision 0.689
+true not_aedes  102    398        recall 0.796, precision 0.978
+```
+
+**Recall 0.962, precision 0.689.** It almost never misses an *Aedes* and cries wolf on
+roughly one call in three. That is the right way round for a health tool — a miss is an
+unreported dengue risk, a false alarm is a wasted fogging run — and it is **a dial, not a
+property**: `gating.ts` needs MSC ≥ 0.70 to call *Aedes*, and raising that trades recall
+for precision. Say "we chose which way to be wrong", not "it is 85% accurate".
+
+med: mosquito recall 0.883, background recall 0.964.
+tri: *Aedes* recall 0.504 — keep it out of the narration.
+
+Caveat that must be said out loud: tested on HumBugDB's own tascam recordings, **not**
+phone-mic audio. Abuzz would be the test that proves phone transfer and it is not run.
 - [ ] M6 `export` — tflite written; band-SNR floor + reference table still to land in specs.md §4
 - [ ] M7 three demo clips (clean Aedes / non-Aedes / correctly-abstaining noisy)
 - [ ] M8 stretch: real in-browser inference on Expo web, behind `classify()`
