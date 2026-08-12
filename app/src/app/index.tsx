@@ -234,6 +234,18 @@ export default function Capture() {
           </Link>
           <Text className="font-mono text-[13px] text-muted">{tally}</Text>
         </View>
+
+        {/* static-node mode (specs §2's secondary capture) — one quiet line, never a second CTA */}
+        <Link href="/node/setup" asChild>
+          <Pressable
+            accessibilityRole="link"
+            className="mb-4 min-h-[44px] items-center justify-center active:opacity-70"
+          >
+            <Text className="font-plex text-[15px] text-muted">
+              Have an old phone? Set it up as a static node
+            </Text>
+          </Pressable>
+        </Link>
       </View>
     </SafeAreaView>
   );
