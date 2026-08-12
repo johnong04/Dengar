@@ -6,6 +6,7 @@ const ROUTES = [
   ['A — Field Instrument', ['/board/a-capture', '/board/a-detected', '/board/a-abstain']],
   ['B — Public Clinic', ['/board/b-capture', '/board/b-detected', '/board/b-abstain']],
   ['C — Verdict', ['/board/c-capture', '/board/c-detected', '/board/c-abstain']],
+  ['v2 officer', ['/board/officer-a', '/board/officer-b', '/board/officer-c']],
 ] as const;
 
 export default function BoardIndex() {
