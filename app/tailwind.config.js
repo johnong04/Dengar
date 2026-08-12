@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const tokens = require('./tailwind.tokens.js');
+
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
@@ -6,6 +8,9 @@ module.exports = {
     extend: {
       // Font tokens — names must match the keys registered in src/app/_layout.tsx useFonts().
       // Weight lives in the family name on native; never use font-bold with these.
+      // IBM Plex Sans + Plex Mono serve BOTH surfaces (citizen dark and officer light) —
+      // see design-system.md §Type. Inter is retained only for the frozen B / officer-a..c
+      // board artifacts; no shipped screen uses it.
       fontFamily: {
         plex: 'IBMPlexSans_400Regular',
         'plex-medium': 'IBMPlexSans_500Medium',
@@ -18,27 +23,11 @@ module.exports = {
         'inter-semibold': 'Inter_600SemiBold',
         'inter-bold': 'Inter_700Bold',
       },
-      // Dark-ground citizen palette — docs/design/design-system.md is law for these values.
-      // Board screens under src/app/board/* are frozen artifacts and keep their raw hex.
-      colors: {
-        bg: '#0B0C0E',
-        surface: '#141619',
-        line: '#26292E',
-        ink: '#E9ECEF',
-        muted: '#9AA3AD',
-        faint: '#5C646E',
-        primary: '#4C9FE0',
-        alert: '#FF5C49',
-        ok: '#35B981',
-        caution: '#E8B44C',
-        'verdict-aedes': '#7E1B10',
-        'verdict-aedes-soft': '#F3C7C0',
-        'verdict-aedes-line': '#9E3D30',
-        'verdict-quiet': '#1A2030',
-        'verdict-quiet-soft': '#B8C1D4',
-        'verdict-quiet-muted': '#9FA9BF',
-        'verdict-quiet-line': '#333D52',
-      },
+
+      // Palette + radius live in tailwind.tokens.js — ONE source, shared with the
+      // /board/tokens swatch probe. Never re-declare a color here.
+      borderRadius: tokens.borderRadius,
+      colors: tokens.colors,
     },
   },
   plugins: [],

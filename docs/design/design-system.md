@@ -31,60 +31,132 @@ Two audiences → two surfaces, deliberately distinct (specs.md §5):
   state. It is the most-seen screen and the trust surface (specs.md §4).
 - specs.md §2 language table is binding on every string.
 
-## Tokens (the shared spine — law, mirrored in `app/tailwind.config.js`)
+## Tokens (the shared spine — law)
 
-### Color
+**One source of truth: `app/tailwind.tokens.js`.** `app/tailwind.config.js` spreads it into the
+theme; `app/src/app/board/tokens.tsx` (route `/board/tokens`) imports it and renders every token as
+a labelled swatch with real sample text at real sizes on its real background. This section is the
+prose law and matches that file value-for-value. **Screens never write a raw hex** — the frozen
+board artifacts under `src/app/board/*` and the probe route are the only exceptions.
 
-Seed: oklch(0.35 0.078 240) — deep harbor blue. Primary hue stays 240±10 in every direction.
+Rewritten 2026-08-12 (slice 11) when the warm citizen revision was gated; see §Warm revision below
+for what moved and why.
 
-| Role | Dark ground (citizen) | Light ground (officer) |
+### Color — citizen, dark ground
+
+Seed: oklch(0.35 0.078 240) — deep harbor blue, kept as `primary`. The ground stays a neutral
+near-black; the warmth lives in the ink and in the surfaces, so a tinted panel reads as **warm light
+falling on a dark instrument**, never as coloured plastic.
+
+| Token | Value | Role |
 |---|---|---|
-| bg | `#0B0C0E` (near-black, chroma 0) | `#FFFFFF` (pure, no tint) |
-| surface | `#141619` | `#F2F5F8` (cool panel) |
-| line | `#26292E` | `#DDE3EA` |
-| ink | `#E9ECEF` | `#15181D` |
-| muted | `#9AA3AD` (AA on bg) | `#556170` (AA on white) |
-| primary | `#4C9FE0` (signal blue) | `#1E56A0` (cobalt) |
-| aedes / alert | `#FF5C49` | `#C63A2B` |
-| clear / ok | `#35B981` | `#1F8A5D` |
-| caution | `#E8B44C` | `#9A6B15` |
+| `bg` | `#0B0C0E` | the ground — near-black, chroma 0 |
+| `surface` | `#191817` | depth 1 — filled grouped surface (warm neutral) |
+| `surface-raised` | `#232120` | depth 2 — footer rows, emphasised blocks |
+| `line` | `#2E2B29` | 1px hairlines, gauge tracks (warm) |
+| `ink` | `#F4EFE9` | warm ink — all prose and headlines |
+| `muted` | `#B5ABA1` | warm muted — labels, secondary prose |
+| `primary` | `#4C9FE0` | signal blue — the one saturated control |
+| `primary-press` | `#63AFE8` | pressed state of `primary` |
+| `halo-inner` | `#152430` | instrument halo, inner ring |
+| `halo-outer` | `#10171E` | instrument halo, outer ring |
+| `tint-guide` | `#28211B` | guidance / instruction block ground |
+| `tint-guide-ink` | `#FFDCC0` | prose on `tint-guide` — warm sand |
+| `tint-guide-mono` | `#C9B9AC` | mono spec line on `tint-guide` |
+| `tint-trust` | `#182723` | privacy / "nothing kept" block, mic-ready chip |
+| `tint-trust-ink` | `#93E3BC` | mono label on `tint-trust` (body prose uses `ink`) |
+| `alert` | `#FF5C49` | RESERVED — positive Aedes verdict only |
+| `ok` | `#35B981` | clear / kept-nothing dot |
+| `ok-bright` | `#7BE0AE` | small dots and marks on `tint-trust` |
+| `caution` | `#E8B44C` | sub-floor reading, gauge fill below threshold |
+| `warm-white` | `#FFF3EC` | primary action ground on the drench (never pure white) |
+
+Both tints are **opaque by construction** — each value *is* the composite over `bg`. An alpha tint
+darkens unpredictably when it lands over another surface, and that is exactly how the board's amber
+went muddy. The two tints are deliberately matched in lightness (rel. luminance .0162 / .0176) and
+opposed in temperature, so guidance and privacy read as one system at two temperatures.
 
 Semantics: **aedes-red is reserved for a positive Aedes verdict and officer alerts.** Never for
-errors, never decoration. Abstain uses ink/muted on the normal ground — a quiet answer, not a warning.
+errors, never decoration. Abstain uses `ink`/`muted` on `bg` with `surface` grouping — a quiet
+answer, not a warning.
 
-#### Verdict drench family (added 2026-08-12 — doc catches up to `tailwind.config.js`, slice 4)
+### Color — verdict drench (positive Aedes result only)
 
-The C-direction drench, as built: the Aedes result surface IS the verdict color. White ink on the
-drench; `-soft` for secondary text (AA on the drench, measured 6.7:1); `-line` for hairlines and
-the confidence track. The quiet family is reserved for a possible abstain drench — defined in the
-config, unused in v1 (v1 abstains sit on the normal dark ground).
+The C-direction wager, kept intact: the Aedes result surface IS the verdict. A vertical gradient
+`from → to` (28 solid bands — a gradient without a dependency) so light gathers at the verdict. The
+two depth layers are **translucent on purpose**, so they ride the gradient instead of banding
+against it.
 
 | Token | Value | Use |
 |---|---|---|
-| `verdict-aedes` | `#7E1B10` | Aedes result ground (the only red-drenched surface) |
-| `verdict-aedes-soft` | `#F3C7C0` | secondary text on the drench |
-| `verdict-aedes-line` | `#9E3D30` | hairlines / track on the drench |
-| `verdict-quiet` | `#1A2030` | reserved (abstain drench, unused v1) |
-| `verdict-quiet-soft` | `#B8C1D4` | reserved |
-| `verdict-quiet-muted` | `#9FA9BF` | reserved |
-| `verdict-quiet-line` | `#333D52` | reserved |
+| `verdict-aedes-from` | `#9A2919` | gradient top |
+| `verdict-aedes` | `#7E1B10` | flat fallback / gradient mid |
+| `verdict-aedes-to` | `#4E0F08` | gradient bottom |
+| `verdict-aedes-soft` | `#F8D9D1` | secondary text on the drench |
+| `verdict-aedes-deep` | `#5E120A` | text on `warm-white` (the primary action) |
+| `verdict-aedes-line` | `rgba(255,255,255,0.14)` | hairlines on the drench |
+| `verdict-aedes-raised` | `rgba(255,255,255,0.10)` | raised block (the stakes paragraph) |
+| `verdict-aedes-sunken` | `rgba(0,0,0,0.22)` | recessed block (the fine-grained heads) |
+| `verdict-aedes-track` | `rgba(0,0,0,0.28)` | confidence gauge track |
 
-Also in config, undocumented until now: `faint #5C646E` (sub-muted, decorative only — below AA,
-never for copy).
+### Color — officer, light ground
+
+Cool, crisp, dense. Never mixed with the citizen palette on one screen.
+
+| Token | Value | Role |
+|---|---|---|
+| `o-bg` | `#FFFFFF` | the ground — pure, no tint |
+| `o-surface` | `#F2F5F8` | cool panel — cards, KPI pills, zero cells |
+| `o-line` | `#DDE3EA` | 1px rules, axis, zero-value spark bars |
+| `o-ink` | `#15181D` | ink |
+| `o-muted` | `#556170` | labels, axis and annotation text |
+| `o-primary` | `#1E56A0` | cobalt — the officer action |
+| `o-primary-wash` | `rgba(30,86,160,0.22)` | secondary data series (rainfall bars) |
+| `o-alert` | `#C63A2B` | officer alert states |
+| `o-alert-ghost` | `rgba(198,58,43,0.06)` | hollow projection fills (+14–21 d case bars) |
+| `o-ok` | `#1A7B52` | ok / clear |
+| `o-caution` | `#8A5F12` | caution |
+
+Heat-grid cells are `o-alert` at alpha 0.14 → 1.00 by cell value, `o-surface` for zero — a
+documented ramp, not a token.
+
+`o-ok` and `o-caution` are **darkened from the v1 doc values** (`#1F8A5D`, `#9A6B15`): measured,
+those failed AA at 4.27:1 and 4.36:1 on `o-surface`. The new values clear AA on both `o-bg` and
+`o-surface`. Anything painted on `o-surface` must be checked against `o-surface`, not against white.
 
 ### Type
 
-- Citizen + shared: **IBM Plex Sans** (400/500/600/700) — institutional-scientific without being cold.
-- Data readouts (confidence, dB, coords, timestamps): **IBM Plex Mono** — instrument credibility,
-  tabular by nature.
-- Scale (px): 12 · 13 · 15 · 17 · 20 · 24 · 30 · 38 · 56(verdict number only)
-- Verdict number is the only thing allowed above 38.
+- **IBM Plex Sans + IBM Plex Mono on BOTH surfaces.** Decided 2026-08-12: the gated officer
+  winners (`officer-e`, `officer-d`) were built in Plex, two-audience distinctness is already
+  carried by ground / density / radius / register, and Plex Mono's tabular figures are the
+  instrument credibility on the officer chart as much as on the citizen readout. A second family
+  would buy nothing and cost a font payload the phone build has to load. `font-inter*` stays in
+  the config only for the frozen B and `officer-a..c` board artifacts; **no shipped screen uses it.**
+- Weights 400/500/600/700 via the family name (`font-plex-medium`, …) — never `font-bold`.
+- Mono is for **numbers and machine strings only** (confidence, dB, coords, timestamps, IDs, spec
+  lines). Prose is always Plex Sans. The warm revision demoted mono from prose; that is law.
+- Scale (px), citizen: **12 · 13 · 15 · 16 · 17 · 20 · 24 · 30 · 34 · 38 · 56**
+  — 12 mono meta · 13 mono data / small pill prose · 15 row labels + secondary actions ·
+  **16 body prose** (the warm revision moved prose up one step from 15) · 17 primary action + app
+  title · 20 verdict subhead · 24 in-control label · 30 capture headline · 34 abstain headline ·
+  38 spare · 56 the verdict word only.
+- Officer adds **10 · 11 · 22** — chart/map annotation below body size (never prose) and the KPI
+  number. The officer surface is dense by design; that density is part of the register.
+- Nothing above 38 on any screen except the verdict word.
 
 ### Space & shape
 
 - Base 4: 4 8 12 16 24 32 48 64. Screen gutter 20.
-- Radius: control 10 · sheet 20 · pill 999. One radius vocabulary per surface, no mixing.
-- Hairlines 1px `line`. No shadows on dark ground; light ground max `0 1px 3px rgba(21,24,29,.08)`.
+- Radius tokens: `chip` 12 · `card` 10 · `block` 20 · `pill` 999. **Citizen uses chip / block /
+  pill; officer uses card / pill.** The radius itself carries two-audience distinctness — soft
+  consumer instrument vs crisp operational console. Never mixed on one screen.
+- Grouping is by **filled surface**, not by rule: prefer a `surface` / `surface-raised` block at
+  `block` radius over a hairline box. Hairlines survive only as dividers *inside* a block and as
+  the officer axis.
+- Hairlines 1px `line` (citizen) / `o-line` (officer). No shadows on dark ground; light ground max
+  `0 1px 3px rgba(21,24,29,.08)`.
+- Depth is exactly two levels per surface (`surface`/`surface-raised`, `-sunken`/`-raised` on the
+  drench). A third level is a defect.
 
 ### Motion
 
@@ -93,8 +165,52 @@ never for copy).
   Idle breathes at 1.6 s (scale 1→1.12, opacity .35→0 — the invitation); listening tightens to
   0.9 s, 1→1.06 — faster and smaller reads as "live mic". Analyzing holds the rings still: the mic
   is closed, so nothing on screen may claim liveness.
+- **Color and depth never animate.** Tints, drench stops and surface levels are static; motion
+  conveys state only, and a shifting ground reads as instability on a field instrument.
 - Reduced motion: rings hold static (single ring at rest opacity); the level meter still moves —
   it is data, not decoration. Reveals become crossfades.
+
+### Warm revision — what changed from the board, and why (2026-08-12, slice 11)
+
+Gate 2 approved the *direction* and explicitly not the hues. Kept from `warm-*`: warm ink and warm
+muted, filled grouped surfaces at `block` radius instead of hairline rules, mono restricted to
+numbers, the two-level raised/recessed depth, warm-white primary on the drench, and the gradient
+drench untouched (John: "nice and aesthetic").
+
+Refined:
+
+1. **The amber guidance block.** Board used `#FFC46B` at 20% alpha over near-black, which composites
+   to `#3B3121` — a muddy brown that reads dull, which is precisely John's "awkward / slightly too
+   much". Fixed by moving the warmth into the *text* and making the ground far subtler: a cleaner,
+   less-yellow base (`#FFB877`) at 12%, stored opaque as `tint-guide #28211B`, with the prose in
+   warm sand `tint-guide-ink #FFDCC0` instead of the board's yellower `#FFDFA8`.
+2. **The mint block.** Same treatment — `#7BE0AE` at 18% (`#1F322B`, a visible green panel) becomes
+   `#6FE0B0` at 13%, opaque as `tint-trust #182723`, label `#93E3BC`. It now reads as a cool
+   counterpart to the guidance tint at the same depth, not as a green card.
+3. **Alpha tints became opaque tokens** on the dark ground, for the reason above.
+4. **`surface` warmed and split.** `#141619` (cool blue-grey) → `#191817` plus a genuine second
+   level `surface-raised #232120`; the board used one `#18191A` for both roles.
+5. **`line` warmed** `#26292E` → `#2E2B29`.
+6. **`verdict-aedes-soft`** `#F3C7C0` → `#F8D9D1`. The board's `#F6D2C9` is warmer than the v1
+   value and was the intended target, but measured it lands at **4.51:1** at 12px on
+   `verdict-aedes-raised` over the *lightest* gradient stop — a 0.01 margin over AA is a latent
+   re-shoot, not a pass. Lifted ~2% in lightness: measured 4.77:1 in that worst case, 5.85:1 on the
+   bare top stop, 7.72:1 on the flat mid. Visually indistinguishable from the gated board.
+
+**Tightest pairs in the whole palette** (measured off `/board/tokens`, 2026-08-12 — 87 text-on-
+surface pairs, 0 failures): `o-alert` on `o-surface` **4.75:1** and `verdict-aedes-soft` on
+`verdict-aedes-raised` over the lightest drench stop **4.77:1**. Neither has room to be placed on
+anything darker/lighter than what is listed here. Every other pair clears 5:1.
+7. **Drench depth layers are alpha, not opaque** — the opposite call from the citizen tints, because
+   here they must ride a gradient rather than sit on one flat ground.
+8. **Officer `o-ok` / `o-caution` darkened** — the v1 values failed AA on `o-surface`.
+
+Deleted: **`faint` `#5C646E`** (3.47:1 — below AA, never used by any screen; a token that cannot
+legally carry copy is a trap, not a token) and the whole **`verdict-quiet` family** (`#1A2030`,
+`#B8C1D4`, `#9FA9BF`, `#333D52`). The gate record settles it: v1 and v2 abstains sit on the normal
+dark ground because refusal must read as the instrument at rest, not as a second verdict colour —
+so an abstain drench has no future user, and no shipped screen or board artifact referenced any of
+the five. Nothing outside the config used them.
 
 ## Gate record (2026-08-12)
 
@@ -111,7 +227,9 @@ verdict color.
 **Warmth revision: APPROVED as the citizen language.** John: *"warm-detected is nice and aesthetic.
 warm-abstain and capture is definitely more friendly and colorful compared to what we have now,
 that's the right direction… but the colour choice looks a bit awkward or very slightly too much, so
-that can be improved."* → **The direction is law; the specific hues are NOT yet law.** The refinement
+that can be improved."* → The direction was law immediately; the specific hues were refined and
+**became law in slice 11** — §Tokens above is now the only source, and §Warm revision records every
+delta from the board with its reason. The refinement
 brief: keep warm ink/muted, the filled grouped surfaces, the radius-20 softness, mono-for-numbers-only
 and the gradient drench. Dial the amber and mint back — the amber block on warm-capture read
 muddy-brown over near-black (my own read, John's "awkward"). Aim for tints that read as *warm light on

@@ -12,6 +12,8 @@ const ROUTES = [
     'warmth revision (citizen)',
     ['/board/warm-capture', '/board/warm-abstain', '/board/warm-detected'],
   ],
+  // Not a direction sketch — the live token probe. Law, kept for every later slice.
+  ['design system — token probe', ['/board/tokens']],
 ] as const;
 
 export default function BoardIndex() {
