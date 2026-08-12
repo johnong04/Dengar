@@ -15,9 +15,8 @@
 export type Tone = 'alert' | 'caution' | 'neutral';
 
 export type Kpi = {
+  /** The screen looks its label up from this (slice 18) — this module emits numbers, never words. */
   key: 'detections' | 'clusters' | 'nodes';
-  /** Short uppercase label. */
-  label: string;
   /** Pre-formatted so a KPI cell never does arithmetic. */
   value: string;
   /** Signed change vs the previous day, or a freshness string for nodes. */
@@ -256,21 +255,18 @@ const clusters = [activeCluster];
 export const kpis: readonly Kpi[] = [
   {
     key: 'detections',
-    label: 'Detections',
     value: String(today),
     delta: signed(today - yesterday),
     tone: 'alert',
   },
   {
     key: 'clusters',
-    label: 'Clusters',
     value: String(clusters.length),
     delta: signed(clusters.length),
     tone: 'alert',
   },
   {
     key: 'nodes',
-    label: 'Nodes',
     value: `${NODES.reporting}/${NODES.total}`,
     delta: signed(NODES.delta),
     tone: 'neutral',
@@ -308,14 +304,54 @@ export type SurveyBlock = {
  * matching `activeCluster.blocks`.
  */
 export const clusterBlocks: readonly SurveyBlock[] = [
-  { id: 'B1', hot: false, nw: { lat: 3.217474, lon: 101.716833 }, se: { lat: 3.214303, lon: 101.718335 } },
-  { id: 'B2', hot: false, nw: { lat: 3.217474, lon: 101.718464 }, se: { lat: 3.214303, lon: 101.719966 } },
-  { id: 'B3', hot: true, nw: { lat: 3.217474, lon: 101.720095 }, se: { lat: 3.214303, lon: 101.721597 } },
-  { id: 'B4', hot: true, nw: { lat: 3.217474, lon: 101.721725 }, se: { lat: 3.214303, lon: 101.723227 } },
-  { id: 'B5', hot: true, nw: { lat: 3.214131, lon: 101.720095 }, se: { lat: 3.211475, lon: 101.721597 } },
-  { id: 'B6', hot: false, nw: { lat: 3.214131, lon: 101.721725 }, se: { lat: 3.211475, lon: 101.723227 } },
-  { id: 'B7', hot: false, nw: { lat: 3.214131, lon: 101.716833 }, se: { lat: 3.211475, lon: 101.718335 } },
-  { id: 'B8', hot: false, nw: { lat: 3.214131, lon: 101.718464 }, se: { lat: 3.211475, lon: 101.719966 } },
+  {
+    id: 'B1',
+    hot: false,
+    nw: { lat: 3.217474, lon: 101.716833 },
+    se: { lat: 3.214303, lon: 101.718335 },
+  },
+  {
+    id: 'B2',
+    hot: false,
+    nw: { lat: 3.217474, lon: 101.718464 },
+    se: { lat: 3.214303, lon: 101.719966 },
+  },
+  {
+    id: 'B3',
+    hot: true,
+    nw: { lat: 3.217474, lon: 101.720095 },
+    se: { lat: 3.214303, lon: 101.721597 },
+  },
+  {
+    id: 'B4',
+    hot: true,
+    nw: { lat: 3.217474, lon: 101.721725 },
+    se: { lat: 3.214303, lon: 101.723227 },
+  },
+  {
+    id: 'B5',
+    hot: true,
+    nw: { lat: 3.214131, lon: 101.720095 },
+    se: { lat: 3.211475, lon: 101.721597 },
+  },
+  {
+    id: 'B6',
+    hot: false,
+    nw: { lat: 3.214131, lon: 101.721725 },
+    se: { lat: 3.211475, lon: 101.723227 },
+  },
+  {
+    id: 'B7',
+    hot: false,
+    nw: { lat: 3.214131, lon: 101.716833 },
+    se: { lat: 3.211475, lon: 101.718335 },
+  },
+  {
+    id: 'B8',
+    hot: false,
+    nw: { lat: 3.214131, lon: 101.718464 },
+    se: { lat: 3.211475, lon: 101.719966 },
+  },
 ];
 
 /**
@@ -329,24 +365,24 @@ export const clusterBlocks: readonly SurveyBlock[] = [
  */
 export const detectionsByArea: Readonly<Record<string, readonly Detection[]>> = {
   'taman-melati': [
-    { id: 'd-tm-01', lat: 3.217131, lon: 101.720610, ageBand: 0 },
+    { id: 'd-tm-01', lat: 3.217131, lon: 101.72061, ageBand: 0 },
     { id: 'd-tm-02', lat: 3.217045, lon: 101.721167, ageBand: 1 },
     { id: 'd-tm-03', lat: 3.215631, lon: 101.720352, ageBand: 2 },
     { id: 'd-tm-04', lat: 3.214731, lon: 101.721296, ageBand: 2 },
     { id: 'd-tm-05', lat: 3.214646, lon: 101.720695, ageBand: 1 },
     { id: 'd-tm-06', lat: 3.217045, lon: 101.722369, ageBand: 0 },
-    { id: 'd-tm-07', lat: 3.216916, lon: 101.722970, ageBand: 0 },
-    { id: 'd-tm-08', lat: 3.216060, lon: 101.722197, ageBand: 2 },
-    { id: 'd-tm-09', lat: 3.215503, lon: 101.721940, ageBand: 0 },
+    { id: 'd-tm-07', lat: 3.216916, lon: 101.72297, ageBand: 0 },
+    { id: 'd-tm-08', lat: 3.21606, lon: 101.722197, ageBand: 2 },
+    { id: 'd-tm-09', lat: 3.215503, lon: 101.72194, ageBand: 0 },
     { id: 'd-tm-10', lat: 3.214903, lon: 101.722884, ageBand: 2 },
     { id: 'd-tm-11', lat: 3.213831, lon: 101.720524, ageBand: 0 },
     { id: 'd-tm-12', lat: 3.213103, lon: 101.721082, ageBand: 0 },
-    { id: 'd-tm-13', lat: 3.213060, lon: 101.720352, ageBand: 1 },
+    { id: 'd-tm-13', lat: 3.21306, lon: 101.720352, ageBand: 1 },
     { id: 'd-tm-14', lat: 3.212032, lon: 101.720395, ageBand: 1 },
   ],
   'wangsa-maju': [
     { id: 'd-wm-01', lat: 3.203762, lon: 101.730222, ageBand: 0 },
-    { id: 'd-wm-02', lat: 3.203548, lon: 101.731510, ageBand: 1 },
+    { id: 'd-wm-02', lat: 3.203548, lon: 101.73151, ageBand: 1 },
     { id: 'd-wm-03', lat: 3.202948, lon: 101.729536, ageBand: 2 },
   ],
   'danau-kota': [],

@@ -2,6 +2,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RoadmapHeader } from '@/components/RoadmapHeader';
+import { type Copy, useCopy } from '@/copy';
 import { activeCluster } from '@/data/district';
 import {
   blockGrid,
@@ -49,6 +50,7 @@ function Eyebrow({ children }: { children: string }) {
  * read as ground, not as a weaker alarm.
  */
 function BlockCell({ b }: { b: BlockTarget }) {
+  const c = useCopy();
   const target = b.priority !== null;
   return (
     <View
@@ -66,7 +68,7 @@ function BlockCell({ b }: { b: BlockTarget }) {
         ) : null}
       </View>
       <Text className={`font-mono text-[11px] ${target ? 'text-o-bg' : 'text-o-muted'}`}>
-        {b.detections} det
+        {c.officer.det(b.detections)}
       </Text>
     </View>
   );
@@ -107,7 +109,26 @@ function FootprintBar({
   );
 }
 
+/** Ledger caption key → prose. `data/roadmap.ts` emits the key and the arithmetic, never words. */
+function ledgerNote(note: LedgerRow['note'], c: Copy): string {
+  switch (note) {
+    case 'national':
+      return c.officer.ledgerNational;
+    case 'district':
+      return c.officer.ledgerDistrict;
+    case 'fogging':
+      return c.officer.ledgerFogging;
+    case 'released':
+      return c.officer.ledgerReleased;
+    case 'programme':
+      return c.officer.ledgerProgramme;
+    case 'input':
+      return c.officer.ledgerInput;
+  }
+}
+
 function LedgerLine({ row }: { row: LedgerRow }) {
+  const c = useCopy();
   return (
     <View className="flex-row items-baseline gap-2 border-t border-o-line py-2">
       <View className="flex-1">
@@ -119,7 +140,9 @@ function LedgerLine({ row }: { row: LedgerRow }) {
             <Text className="font-mono-medium text-[12px] text-o-ink">{` = ${row.result}`}</Text>
           ) : null}
         </View>
-        <Text className="mt-[2px] font-plex text-[11px] text-o-muted">{row.note}</Text>
+        <Text className="mt-[2px] font-plex text-[11px] text-o-muted">
+          {ledgerNote(row.note, c)}
+        </Text>
       </View>
       <Text
         className={`font-mono text-[10px] ${row.tag === 'cited' ? 'text-o-ok' : 'text-o-caution'}`}
@@ -131,6 +154,7 @@ function LedgerLine({ row }: { row: LedgerRow }) {
 }
 
 export default function RoadmapDispatch() {
+  const c = useCopy();
   return (
     <SafeAreaView className="flex-1 bg-o-bg" edges={['top']}>
       <ScrollView
@@ -138,13 +162,17 @@ export default function RoadmapDispatch() {
         showsVerticalScrollIndicator={false}
       >
         <RoadmapHeader
-          title="Surgical dispatch"
-          kicker={`${activeCluster.area} · ${activeCluster.detections} / ${activeCluster.windowHours} h`}
+          title={c.officer.dispatchTitle}
+          kicker={c.officer.dispatchKicker(
+            activeCluster.area,
+            activeCluster.detections,
+            activeCluster.windowHours,
+          )}
         />
 
         {/* ── where the truck goes ────────────────────────────────────────── */}
         <View className="mt-4 px-5">
-          <Eyebrow>Fogging targets</Eyebrow>
+          <Eyebrow>{c.officer.foggingTargets}</Eyebrow>
           <View className="mt-2 gap-2">
             {blockGrid.map((row, r) => (
               <View key={r} className="flex-row gap-2">
@@ -155,61 +183,61 @@ export default function RoadmapDispatch() {
             ))}
           </View>
           <View className="mt-2.5 flex-row items-baseline justify-between gap-3">
-            <Text className="font-plex-medium text-[13px] text-o-ink">Dispatch order</Text>
+            <Text className="font-plex-medium text-[13px] text-o-ink">
+              {c.officer.dispatchOrder}
+            </Text>
             <Text className="font-mono-medium text-[13px] text-o-alert">
               {dispatchRoute.join(' → ')}
             </Text>
           </View>
-          <Text className="mt-1 font-plex text-[11px] text-o-muted">
-            Priority = detections weighted by recency (&lt; 24 h ×3 · 48 h ×2 · 72 h ×1). A declared
-            modelling choice, not a sourced figure.
-          </Text>
+          <Text className="mt-1 font-plex text-[11px] text-o-muted">{c.officer.priorityNote}</Text>
         </View>
 
         {/* ── the footprint ───────────────────────────────────────────────── */}
         <View className="mt-5 px-5">
-          <Eyebrow>Footprint</Eyebrow>
+          <Eyebrow>{c.officer.footprint}</Eyebrow>
           <FootprintBar
-            name="Blanket"
-            detail={`8 blocks · ${economics.totalKm2.toFixed(3)} km²`}
+            name={c.officer.blanket}
+            detail={`${c.officer.blocks(blockGrid.flat().length)} · ${economics.totalKm2.toFixed(3)} km²`}
             share={1}
             tone="blanket"
           />
           <FootprintBar
-            name="Targeted"
-            detail={`${dispatchRoute.length} blocks · ${economics.targetKm2.toFixed(3)} km²`}
+            name={c.officer.targeted}
+            detail={`${c.officer.blocks(dispatchRoute.length)} · ${economics.targetKm2.toFixed(3)} km²`}
             share={economics.footprintShare}
             tone="target"
           />
           <Text className="mt-2 font-mono text-[11px] text-o-muted">
             {economics.targetKm2.toFixed(3)} ÷ {economics.totalKm2.toFixed(3)} ={' '}
-            {(economics.footprintShare * 100).toFixed(1)}% of the ground
+            {(economics.footprintShare * 100).toFixed(1)}% {c.officer.ofTheGround}
           </Text>
         </View>
 
         {/* ── the readout ─────────────────────────────────────────────────── */}
         <View className="mt-5 px-5">
           <View className="rounded-card bg-o-surface px-4 py-3.5">
-            <Eyebrow>Cost per case averted</Eyebrow>
+            <Eyebrow>{c.officer.costPerCaseAverted}</Eyebrow>
             <View className="mt-1 flex-row items-baseline gap-2">
               <Text className="font-mono-medium text-[30px] text-o-ink">
                 {economics.costFactor.toFixed(1)}×
               </Text>
-              <Text className="font-plex-medium text-[15px] text-o-ink">lower than blanket</Text>
+              <Text className="font-plex-medium text-[15px] text-o-ink">
+                {c.officer.lowerThanBlanket}
+              </Text>
             </View>
             <Text className="mt-1 font-mono text-[11px] text-o-muted">
               1 ÷ {(economics.footprintShare * 100).toFixed(1)}% = {economics.costFactor.toFixed(2)}
             </Text>
             <Text className="mt-2 font-plex text-[13px] text-o-muted">
-              Assumes fogging cost scales with ground covered, and that both sorties avert the same
-              cases.
+              {c.officer.costAssumption}
             </Text>
           </View>
         </View>
 
         {/* ── the ledger ──────────────────────────────────────────────────── */}
         <View className="mt-5 px-5">
-          <Eyebrow>Where the money is · specs §9</Eyebrow>
+          <Eyebrow>{c.officer.whereMoney}</Eyebrow>
           <View className="mt-1">
             {ledger.map((row) => (
               <LedgerLine key={row.note} row={row} />
@@ -219,10 +247,7 @@ export default function RoadmapDispatch() {
 
         {/* ── what this screen does not claim ─────────────────────────────── */}
         <View className="mt-3 px-5">
-          <Text className="font-plex text-[13px] text-o-muted">
-            Cases averted is still an open term — specs §11 item 3. This screen sizes the cost, not
-            the effect.
-          </Text>
+          <Text className="font-plex text-[13px] text-o-muted">{c.officer.notClaimed}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

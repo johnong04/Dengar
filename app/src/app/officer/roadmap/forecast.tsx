@@ -2,7 +2,8 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RoadmapHeader } from '@/components/RoadmapHeader';
-import { trend } from '@/data/district';
+import { useCopy } from '@/copy';
+import { district, trend } from '@/data/district';
 import { band, forecast } from '@/data/roadmap';
 
 // v3 ROADMAP — PREDICTION TIMELINE (specs.md §5 v3: "7–14 day outbreak-risk forecast from detection
@@ -79,20 +80,24 @@ function EdgeRow({ name, assumption, math }: { name: string; assumption: string;
 }
 
 export default function RoadmapForecast() {
+  const c = useCopy();
   return (
     <SafeAreaView className="flex-1 bg-o-bg" edges={['top']}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
       >
-        <RoadmapHeader title="Prediction timeline" kicker="Setapak · 14-day outlook" />
+        <RoadmapHeader
+          title={c.officer.forecastTitle}
+          kicker={c.officer.forecastKicker(district.name, forecast.horizonDays)}
+        />
 
         {/* ── the readout ─────────────────────────────────────────────────────
             The band's plateau, stated as a range. There is deliberately no single headline number
             and no 0–100 risk score: a score needs a denominator §9 cannot source, which is exactly
             why officer-f's arc gauge was rejected. */}
         <View className="mt-4 px-5">
-          <Eyebrow>Detections per day · +7 d</Eyebrow>
+          <Eyebrow>{c.officer.perDayAt7}</Eyebrow>
           <View className="mt-1 flex-row items-baseline gap-2">
             <Text className="font-mono-medium text-[30px] text-o-ink">
               {forecast.basePerDay.toFixed(2)}
@@ -101,26 +106,24 @@ export default function RoadmapForecast() {
             <Text className="font-mono-medium text-[30px] text-o-alert">
               {forecast.highPerDay.toFixed(1)}
             </Text>
-            <Text className="font-plex text-[13px] text-o-muted">modelled range</Text>
+            <Text className="font-plex text-[13px] text-o-muted">{c.officer.modelledRange}</Text>
           </View>
-          <Text className="mt-1 font-plex text-[13px] text-o-muted">
-            A faster input layer for D-MOSS, not a rival forecast.
-          </Text>
+          <Text className="mt-1 font-plex text-[13px] text-o-muted">{c.officer.dmoss}</Text>
         </View>
 
         {/* ── the chart ───────────────────────────────────────────────────── */}
         <View className="mt-4 px-5">
           <View className="flex-row items-center gap-3.5">
             <LegendKey
-              label="detections"
+              label={c.officer.legendDetections}
               swatch={<View className="h-2 w-2 rounded-[2px] bg-o-alert" />}
             />
             <LegendKey
-              label="rain mm"
+              label={c.officer.legendRain}
               swatch={<View className="h-2 w-2 rounded-[2px] bg-o-primary-wash" />}
             />
             <LegendKey
-              label="band · modelled"
+              label={c.officer.legendBand}
               swatch={
                 <View className="h-2 w-3 rounded-[1px] border border-o-alert bg-o-alert-ghost" />
               }
@@ -221,7 +224,7 @@ export default function RoadmapForecast() {
             </Text>
             <Text className="font-mono-medium text-[10px] text-o-ink">0</Text>
             <View className="flex-row justify-between" style={{ flex: FUTURE }}>
-              <Text className="pl-1 font-mono text-[10px] text-o-muted">today</Text>
+              <Text className="pl-1 font-mono text-[10px] text-o-muted">{c.officer.today}</Text>
               <Text className="font-mono text-[10px] text-o-muted">+{forecast.horizonDays} d</Text>
             </View>
           </View>
@@ -229,16 +232,20 @@ export default function RoadmapForecast() {
 
         {/* ── inputs ──────────────────────────────────────────────────────── */}
         <View className="mt-5 px-5">
-          <Eyebrow>Inputs</Eyebrow>
+          <Eyebrow>{c.officer.inputs}</Eyebrow>
           <View className="mt-2 flex-row gap-2">
             <View className="flex-1 rounded-card bg-o-surface px-3 py-2.5">
-              <Text className="font-plex text-[11px] text-o-muted">Detection density</Text>
+              <Text className="font-plex text-[11px] text-o-muted">
+                {c.officer.detectionDensity}
+              </Text>
               <Text className="mt-[2px] font-mono-medium text-[15px] text-o-ink">
                 {forecast.windowCount} / {forecast.windowHours} h
               </Text>
             </View>
             <View className="flex-1 rounded-card bg-o-surface px-3 py-2.5">
-              <Text className="font-plex text-[11px] text-o-muted">Rainfall, same window</Text>
+              <Text className="font-plex text-[11px] text-o-muted">
+                {c.officer.rainfallSameWindow}
+              </Text>
               <Text className="mt-[2px] font-mono-medium text-[15px] text-o-primary">
                 +{forecast.rainMm} mm
               </Text>
@@ -246,37 +253,35 @@ export default function RoadmapForecast() {
           </View>
           {/* Honest about HOW rainfall enters: it decides which edge you plan against. Multiplying
               the band by a rainfall coefficient would be an invented figure — §9 has none. */}
-          <Text className="mt-2 font-plex text-[11px] text-o-muted">
-            Rainfall selects the edge to plan against; it does not scale the numbers.
-          </Text>
+          <Text className="mt-2 font-plex text-[11px] text-o-muted">{c.officer.rainfallNote}</Text>
         </View>
 
         {/* ── how the band is drawn ───────────────────────────────────────── */}
         <View className="mt-5 px-5">
-          <Eyebrow>How the band is drawn</Eyebrow>
+          <Eyebrow>{c.officer.howBandDrawn}</Eyebrow>
           <View className="mt-1">
-            <EdgeRow name="Floor" assumption="The last 72 h rate holds." math={forecast.lowMath} />
             <EdgeRow
-              name="Ceiling"
-              assumption="The measured 72 h growth runs one more window, then holds."
+              name={c.officer.floor}
+              assumption={c.officer.floorAssumption}
+              math={forecast.lowMath}
+            />
+            <EdgeRow
+              name={c.officer.ceiling}
+              assumption={c.officer.ceilingAssumption}
               math={forecast.highMath}
             />
           </View>
-          <Text className="mt-2 font-plex text-[11px] text-o-muted">
-            Modelled, not measured. Growth is never compounded past the window it was measured over,
-            so the ceiling is a bound rather than a path.
-          </Text>
+          <Text className="mt-2 font-plex text-[11px] text-o-muted">{c.officer.bandNote}</Text>
         </View>
 
         {/* ── what the band buys ──────────────────────────────────────────── */}
         <View className="mt-5 px-5">
           <View className="rounded-card bg-o-surface px-4 py-3">
             <Text className="font-plex-medium text-[15px] text-o-ink">
-              Case notification sees this {forecast.leadDays.from}–{forecast.leadDays.to} d later.
+              {c.officer.caseNotification(forecast.leadDays.from, forecast.leadDays.to)}
             </Text>
             <Text className="mt-1 font-plex text-[13px] text-o-muted">
-              Every forecast is limited by how late its input arrives. This is the input arriving
-              earlier.
+              {c.officer.caseNotificationNote}
             </Text>
           </View>
         </View>

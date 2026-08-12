@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { useCopy } from '@/copy';
 import { FOG_BY_STAMP, activeCluster } from '@/data/district';
 import { FOG_WINDOW_H, useFogCountdown, type Acknowledgement } from '@/store/dispatch';
 
@@ -17,6 +18,7 @@ import { FOG_WINDOW_H, useFogCountdown, type Acknowledgement } from '@/store/dis
 // No dependency and no svg: the progress rule is two Views.
 
 export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
+  const c = useCopy();
   const left = useFogCountdown(ack);
 
   return (
@@ -24,7 +26,9 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <View className="bg-o-ok" style={{ width: 8, height: 8, borderRadius: 999 }} />
-          <Text className="font-plex-semibold text-[15px] text-o-ink">Directive acknowledged</Text>
+          <Text className="font-plex-semibold text-[15px] text-o-ink">
+            {c.officer.directiveAcknowledged}
+          </Text>
         </View>
         <Text className="font-mono text-[11px] text-o-muted">{ack.at}</Text>
       </View>
@@ -32,7 +36,7 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
       {/* the signatory — who put their name to it */}
       <View className="mt-2.5 flex-row items-baseline gap-2 border-t border-o-line pt-2.5">
         <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
-          Signed
+          {c.officer.signed}
         </Text>
         <Text className="font-plex-medium text-[13px] text-o-ink">{ack.by.name}</Text>
         <Text className="font-mono text-[11px] text-o-muted">{ack.by.badge}</Text>
@@ -41,9 +45,11 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
       {/* the deadline, as time actually remaining rather than as a restated duration */}
       <View className="mt-3 flex-row items-baseline justify-between">
         <Text className="font-mono-medium text-[22px] text-o-ink">
-          {left.overdue ? 'overdue' : `${left.hours} h ${String(left.minutes).padStart(2, '0')} m`}
+          {left.overdue
+            ? c.officer.overdue
+            : c.officer.remaining(left.hours, String(left.minutes).padStart(2, '0'))}
         </Text>
-        <Text className="font-mono text-[11px] text-o-muted">fog by {FOG_BY_STAMP}</Text>
+        <Text className="font-mono text-[11px] text-o-muted">{c.officer.fogBy(FOG_BY_STAMP)}</Text>
       </View>
       <View className="mt-2 h-[3px] w-full overflow-hidden rounded-pill bg-o-line">
         <View
@@ -51,10 +57,12 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
           style={{ width: `${Math.max(1.5, left.elapsed * 100)}%` }}
         />
       </View>
-      <Text className="mt-1.5 font-mono text-[10px] text-o-muted">of the {FOG_WINDOW_H} h window</Text>
+      <Text className="mt-1.5 font-mono text-[10px] text-o-muted">
+        {c.officer.ofWindow(FOG_WINDOW_H)}
+      </Text>
 
       <Text className="mt-3 font-plex text-[13px] text-o-muted">
-        Fogging scheduled · {activeCluster.blocks}, {activeCluster.area}
+        {c.officer.foggingScheduled(activeCluster.blocks, activeCluster.area)}
       </Text>
     </View>
   );

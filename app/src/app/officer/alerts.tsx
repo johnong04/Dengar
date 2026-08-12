@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Copy, useCopy } from '@/copy';
 import { FOG_BY_STAMP, activeCluster, district, type Tone } from '@/data/district';
 import {
   RECORD_STAMP,
-  STATE_LABEL,
+  stateLabel,
   useAcknowledgement,
   useAlertFeed,
   type AlertRow,
@@ -31,10 +32,10 @@ import {
 
 type Filter = 'all' | 'active' | 'acknowledged';
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'active', label: 'Active' },
-  { key: 'acknowledged', label: 'Acknowledged' },
+const filtersOf = (c: Copy): { key: Filter; label: string }[] => [
+  { key: 'all', label: c.officer.filterAll },
+  { key: 'active', label: c.officer.filterActive },
+  { key: 'acknowledged', label: c.officer.filterAcknowledged },
 ];
 
 /** Semantic tone → officer token. Literal so the Tailwind scanner sees every class. */
@@ -87,10 +88,13 @@ function RecencyDot({ days, tone }: { days: number | null; tone: Tone }) {
   if (days <= 3) {
     return <View className={TONE_BG[tone]} style={{ width: 7, height: 7, borderRadius: 999 }} />;
   }
-  return <View className="border border-o-muted" style={{ width: 9, height: 9, borderRadius: 999 }} />;
+  return (
+    <View className="border border-o-muted" style={{ width: 9, height: 9, borderRadius: 999 }} />
+  );
 }
 
 function StateChip({ state }: { state: DirectiveState }) {
+  const c = useCopy();
   const skin =
     state === 'directive'
       ? 'bg-o-alert'
@@ -101,7 +105,7 @@ function StateChip({ state }: { state: DirectiveState }) {
     state === 'directive' ? 'text-o-bg' : state === 'acknowledged' ? 'text-o-ok' : 'text-o-muted';
   return (
     <View className={`rounded-pill px-2 py-[2px] ${skin}`}>
-      <Text className={`font-mono text-[10px] ${ink}`}>{STATE_LABEL[state]}</Text>
+      <Text className={`font-mono text-[10px] ${ink}`}>{stateLabel(state, c)}</Text>
     </View>
   );
 }
@@ -145,6 +149,8 @@ function LogEntry({
 }
 
 export default function OfficerAlerts() {
+  const c = useCopy();
+  const FILTERS = filtersOf(c);
   const router = useRouter();
   const ack = useAcknowledgement();
   const rows = useAlertFeed();
@@ -157,17 +163,18 @@ export default function OfficerAlerts() {
       <View className="flex-row items-center border-b border-o-line pl-1 pr-5">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to district"
+          accessibilityLabel={c.common.backToDistrict}
           onPress={() => router.back()}
           className="h-11 w-11 items-center justify-center"
-          style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}>
+          style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+        >
           <Text className="font-plex-medium text-[22px] text-o-primary">‹</Text>
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
-          <Text className="font-plex-semibold text-[17px] text-o-ink">Alerts</Text>
+          <Text className="font-plex-semibold text-[17px] text-o-ink">{c.officer.alertsTitle}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-              <Text className="font-mono text-[10px] text-o-muted">simulated</Text>
+              <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -186,7 +193,8 @@ export default function OfficerAlerts() {
               accessibilityState={{ selected: on }}
               onPress={() => setFilter(f.key)}
               className={`min-h-[44px] flex-row items-center gap-1.5 rounded-pill px-3 ${on ? 'bg-o-primary' : 'bg-o-surface'}`}
-              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
+              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+            >
               <Text className={`font-plex-medium text-[13px] ${on ? 'text-o-bg' : 'text-o-muted'}`}>
                 {f.label}
               </Text>
@@ -198,17 +206,27 @@ export default function OfficerAlerts() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         {shown.map((row) => (
           <Link
             key={row.area.id}
             href={{ pathname: '/officer/cluster/[id]', params: { id: row.area.id } }}
-            asChild>
+            asChild
+          >
             <Pressable
               accessibilityRole="link"
-              accessibilityLabel={`${row.area.name}, ${STATE_LABEL[row.state]}, ${row.area.count} detections in ${activeCluster.windowHours} hours`}
+              accessibilityLabel={c.officer.rowA11y(
+                row.area.name,
+                stateLabel(row.state, c),
+                row.area.count,
+                activeCluster.windowHours,
+              )}
               className="min-h-[68px] flex-row items-center gap-3 border-b border-o-line px-5 py-3"
-              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}>
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+            >
               <View className="items-center" style={{ width: 10 }}>
                 <RecencyDot days={row.lastSeenDays} tone={row.area.tone} />
               </View>
@@ -219,8 +237,12 @@ export default function OfficerAlerts() {
                   <StateChip state={row.state} />
                   <Text className={`font-mono text-[11px] ${TONE_TEXT[row.area.tone]}`}>
                     {row.area.count === 0
-                      ? `silent ${row.area.delta}`
-                      : `${row.area.count} / ${activeCluster.windowHours} h · ${row.area.delta}`}
+                      ? c.officer.silent(row.area.delta)
+                      : c.officer.countWindow(
+                          row.area.count,
+                          activeCluster.windowHours,
+                          row.area.delta,
+                        )}
                   </Text>
                 </View>
               </View>
@@ -235,17 +257,15 @@ export default function OfficerAlerts() {
           // Empty is a real state here: acknowledging the one directive empties `Active`, and that
           // emptiness IS the outcome. Reported plainly — never a failure, never a celebration.
           <View className="px-5 pt-6">
-            <Text className="font-plex-medium text-[15px] text-o-ink">Nothing in this filter</Text>
+            <Text className="font-plex-medium text-[15px] text-o-ink">{c.officer.emptyFilter}</Text>
             <Text className="mt-1 font-mono text-[11px] text-o-muted">
-              {filter === 'active'
-                ? 'no directive awaiting a signature'
-                : 'no directive has been acknowledged'}
+              {filter === 'active' ? c.officer.emptyActive : c.officer.emptyAcknowledged}
             </Text>
           </View>
         ) : null}
 
         <Text className="px-5 pt-3 font-mono text-[10px] text-o-muted">
-          {rows.length} watch areas · {activeCluster.windowHours} h window · seeded district
+          {c.officer.feedFoot(rows.length, activeCluster.windowHours)}
         </Text>
 
         {/* ── dispatch log ────────────────────────────────────────────────────
@@ -256,24 +276,24 @@ export default function OfficerAlerts() {
             clock + 48 h). */}
         <View className="mt-5 border-t border-o-line px-5 pt-3">
           <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
-            Dispatch log
+            {c.officer.dispatchLog}
           </Text>
           <View className="mt-3">
             <LogEntry
-              label="Directive issued"
+              label={c.officer.directiveIssued}
               detail={`${activeCluster.area} · ${activeCluster.blocks}`}
               stamp={RECORD_STAMP}
               done
             />
             <LogEntry
-              label={ack ? 'Acknowledged' : 'Awaiting acknowledgement'}
-              detail={ack ? `${ack.by.name} · ${ack.by.badge}` : 'not yet signed'}
+              label={ack ? c.officer.acknowledged : c.officer.awaitingAck}
+              detail={ack ? `${ack.by.name} · ${ack.by.badge}` : c.officer.notYetSigned}
               stamp={ack ? ack.at : '—'}
               done={!!ack}
             />
             <LogEntry
-              label="Fogging due"
-              detail={`${activeCluster.blocks} · within 48 h of issue`}
+              label={c.officer.foggingDue}
+              detail={c.officer.withinIssue(activeCluster.blocks)}
               stamp={FOG_BY_STAMP}
               done={false}
               last

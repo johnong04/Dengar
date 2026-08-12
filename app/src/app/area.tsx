@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Copy, useCopy } from '@/copy';
 import {
   MAP_FOCUS_LON_SPAN,
   activeCluster,
@@ -63,26 +64,26 @@ const MAP_VEIL = 0.78;
  * elevated area wears `caution` and a clear one wears `ok`. The word carries the level; the colour
  * carries only elevated-vs-clear.
  */
-const RISK: Record<Tone, { word: string; text: string; dot: string }> = {
-  alert: { word: 'Raised', text: 'text-caution', dot: 'bg-caution' },
-  caution: { word: 'Watch', text: 'text-caution', dot: 'bg-caution' },
-  neutral: { word: 'Low', text: 'text-ok', dot: 'bg-ok' },
-};
+const riskOf = (c: Copy): Record<Tone, { word: string; text: string; dot: string }> => ({
+  alert: { word: c.area.riskRaised, text: 'text-caution', dot: 'bg-caution' },
+  caution: { word: c.area.riskWatch, text: 'text-caution', dot: 'bg-caution' },
+  neutral: { word: c.area.riskLow, text: 'text-ok', dot: 'bg-ok' },
+});
 
 /**
  * The prevention set. Standard dengue source-reduction advice — nothing here is a figure, so
  * nothing here needs specs §9. The cadence tag is the instruction's other half (do it now vs do it
  * weekly), not an icon: design-system.md bans decoration standing in for information.
  */
-const PREVENTION: { action: string; when: string; why?: string }[] = [
-  { action: 'Empty pot trays, pails and buckets.', when: 'now' },
-  { action: 'Cover the water tanks and drums you cannot empty.', when: 'now' },
-  { action: 'Check gutters and roof drains once a week.', when: 'weekly' },
+const preventionOf = (c: Copy): { action: string; when: string; why?: string }[] => [
+  { action: c.area.prevention1, when: c.area.whenNow },
+  { action: c.area.prevention2, when: c.area.whenNow },
+  { action: c.area.prevention3, when: c.area.whenWeekly },
   {
-    action: 'Use repellent in the morning and late afternoon.',
-    when: 'daylight',
+    action: c.area.prevention4,
+    when: c.area.whenDaylight,
     // specs.md §2: Aedes aegypti bites in daylight. That is why this line is not "at night".
-    why: 'Aedes aegypti bites in daylight, not at dusk.',
+    why: c.area.prevention4Why,
   },
 ];
 
@@ -119,11 +120,13 @@ function backToCapture() {
 }
 
 export default function Area() {
+  const c = useCopy();
   const [map, setMap] = useState<Size | null>(null);
 
   const area = watchAreas.find((w) => w.id === HOME_AREA_ID) ?? watchAreas[0];
   const detections = detectionsByArea[area.id] ?? [];
-  const risk = RISK[area.tone];
+  const risk = riskOf(c)[area.tone];
+  const PREVENTION = preventionOf(c);
 
   // Coarse density: every detection is collapsed into the block that contains it, and the block is
   // the only thing that ever gets drawn. This is where the privacy claim is actually enforced —
@@ -178,7 +181,7 @@ export default function Area() {
         <Pressable
           onPress={backToCapture}
           accessibilityRole="button"
-          accessibilityLabel="Back to capture"
+          accessibilityLabel={c.common.backToCapture}
           className="-ml-2 h-11 w-11 items-center justify-center active:opacity-70"
         >
           {/* 24, not the officer chevron's 22: design-system.md §Type reserves 10/11/22 for the
@@ -187,10 +190,10 @@ export default function Area() {
           <Text className="font-plex-medium text-[24px] text-primary">‹</Text>
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
-          <Text className="font-plex-semibold text-[17px] text-ink">Your area</Text>
+          <Text className="font-plex-semibold text-[17px] text-ink">{c.area.title}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-surface px-2 py-[2px]">
-              <Text className="font-mono text-[12px] text-muted">simulated</Text>
+              <Text className="font-mono text-[12px] text-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -209,12 +212,10 @@ export default function Area() {
             {risk.word}
           </Text>
           <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">
-            Aedes was confirmed in your neighbourhood in the last {activeCluster.windowHours} hours,
-            by people who identified the mosquito that found them.
+            {c.area.answer(activeCluster.windowHours)}
           </Text>
           <Text className="mt-3 font-mono text-[13px] text-muted">
-            {area.count} detections · {activeCluster.windowHours} h · +{activeCluster.rainMm} mm
-            rain
+            {c.area.tally(area.count, activeCluster.windowHours, activeCluster.rainMm)}
           </Text>
         </View>
 
@@ -237,7 +238,7 @@ export default function Area() {
                 <Image
                   source={MAP_IMAGE}
                   contentFit="fill"
-                  accessibilityLabel={`OpenStreetMap basemap of ${district.name}`}
+                  accessibilityLabel={c.area.basemapA11y(district.name)}
                   style={{
                     position: 'absolute',
                     left: offset.x,
@@ -307,7 +308,7 @@ export default function Area() {
               licence line breaks across two ragged columns. Two short lines always fit. */}
           <View className="px-5 py-3">
             <Text className="font-mono text-[12px] text-muted">
-              shaded by block · {activeCluster.windowHours} h
+              {c.area.shading(activeCluster.windowHours)}
             </Text>
             <Text className="mt-1 font-mono text-[12px] text-muted">{OSM_ATTRIBUTION}</Text>
           </View>
@@ -317,18 +318,17 @@ export default function Area() {
             On the trust tint, the same block the capture screen uses for "nothing is kept". */}
         <View className="mt-3 rounded-block bg-tint-trust px-5 py-4">
           <Text className="font-plex text-[16px] leading-6 text-ink">
-            Detections are rounded to a block of about {BLOCK_M} m before anyone sees them — never
-            to a street or a home.
+            {c.area.privacyBody(BLOCK_M)}
           </Text>
           <Text className="mt-2 font-mono text-[12px] text-tint-trust-ink">
-            block level · no address, no dot on a house
+            {c.area.privacySpec}
           </Text>
         </View>
 
         {/* ── the action ──────────────────────────────────────────────────────────
             The whole point of the screen. Concrete, cadence-tagged, no lecture. */}
         <Text className="mb-3 mt-6 font-plex-semibold text-[20px] text-ink">
-          What actually helps
+          {c.area.actionsHeading}
         </Text>
         <View className="rounded-block bg-surface px-5">
           {PREVENTION.map((p, i) => (
@@ -353,9 +353,7 @@ export default function Area() {
           accessibilityRole="button"
           className="mt-6 min-h-[52px] items-center justify-center rounded-block bg-surface-raised px-5 active:opacity-70"
         >
-          <Text className="font-plex-medium text-[15px] text-primary">
-            Identify the mosquito that found you
-          </Text>
+          <Text className="font-plex-medium text-[15px] text-primary">{c.area.cta}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

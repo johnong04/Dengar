@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { Block, FigureTag, RoadmapScreen, SimulatedTag } from '@/components/RoadmapChrome';
+import { type Copy, useCopy } from '@/copy';
 import type { SpeciesDetail } from '@/inference/gating';
 import { CITED } from '@/lib/impact';
 
@@ -38,27 +39,27 @@ type Head = {
   status: string;
 };
 
-const HEADS: Head[] = [
+const headsOf = (c: Copy): Head[] => [
   {
-    label: 'Species',
+    label: c.roadmap.headSpecies,
     value: SEEDED.taxon.name,
     confidence: SEEDED.taxon.confidence,
-    why: 'The named species, not the aedes / not-aedes bucket the verdict is built on.',
-    status: 'optional head · in the contract',
+    why: c.roadmap.whySpecies,
+    status: c.roadmap.statusInContract,
   },
   {
-    label: 'Sex',
-    value: SEEDED.sex.value,
+    label: c.roadmap.headSex,
+    value: c.roadmap.sexFemale,
     confidence: SEEDED.sex.confidence,
-    why: 'Only females bite. A male at your ear is noise, not risk.',
-    status: 'optional head · in the contract',
+    why: c.roadmap.whySex,
+    status: c.roadmap.statusInContract,
   },
   {
-    label: 'Gravid',
-    value: SEEDED.gravid.value ? 'yes' : 'no',
+    label: c.roadmap.headGravid,
+    value: SEEDED.gravid.value ? c.common.yes : c.common.no,
     confidence: SEEDED.gravid.confidence,
-    why: 'A female that has already fed is the one that can carry dengue into her next bite.',
-    status: 'no model head exists for this yet',
+    why: c.roadmap.whyGravid,
+    status: c.roadmap.statusNoHead,
   },
 ];
 
@@ -94,40 +95,40 @@ function HeadRow({ head, first }: { head: Head; first: boolean }) {
 }
 
 export default function RoadmapDetail() {
+  const c = useCopy();
+  const HEADS = headsOf(c);
   return (
     <RoadmapScreen
-      title="Fine-grained"
+      title={c.roadmap.detailLabel}
       self="detail"
-      headline={'Which one it was,\nand whether she fed.'}
-      standing="Not built yet. The result screen already renders these fields whenever a head reports one — today none do, so this is what they would say."
+      headline={c.roadmap.detailHeadline}
+      standing={c.roadmap.detailStanding}
     >
-      <Block heading="reading" tag={<SimulatedTag />}>
+      <Block heading={c.roadmap.reading} tag={<SimulatedTag />}>
         <View className="flex-row items-center gap-2 pb-1 pt-1">
           {/* the vector's mark — same 8 px dot the history log uses, the only red here */}
           <View className="h-2 w-2 rounded-full bg-alert" />
-          <Text className="font-plex-semibold text-[20px] text-ink">Aedes</Text>
-          <Text className="font-mono text-[13px] text-muted">verdict · 0.91</Text>
+          <Text className="font-plex-semibold text-[20px] text-ink">{c.history.aedes}</Text>
+          <Text className="font-mono text-[13px] text-muted">{c.roadmap.verdict('0.91')}</Text>
         </View>
         {HEADS.map((h, i) => (
           <HeadRow key={h.label} head={h} first={i === 0} />
         ))}
       </Block>
 
-      <Block heading="why it matters" tint="guide">
+      <Block heading={c.roadmap.whyItMatters} tint="guide">
         <Text className="font-plex text-[16px] leading-6 text-tint-guide-ink">
-          Only female mosquitoes bite — males never feed on blood. And a female only carries dengue
-          onward once she has fed on someone who had it. Species, sex and feeding state are three
-          different levels of urgency, and the verdict alone cannot tell them apart.
+          {c.roadmap.detailWhyA}
         </Text>
         <Text className="mt-3 font-plex text-[16px] leading-6 text-tint-guide-ink">
-          An officer deciding where a fogging truck goes is acting on that difference.
+          {c.roadmap.detailWhyB}
         </Text>
       </Block>
 
-      <Block heading="what the evidence supports">
+      <Block heading={c.roadmap.evidenceHeading}>
         <View className="flex-row items-start justify-between py-3">
           <Text className="shrink pr-4 font-plex text-[16px] leading-6 text-ink">
-            Species + sex together, controlled conditions
+            {c.roadmap.evidenceSpeciesSex}
           </Text>
           <View className="items-end">
             <Text className="font-mono-medium text-[17px] text-ink">
@@ -140,7 +141,7 @@ export default function RoadmapDetail() {
         </View>
         <View className="flex-row items-start justify-between border-t border-line py-3">
           <Text className="shrink pr-4 font-plex text-[16px] leading-6 text-ink">
-            Four species, controlled conditions
+            {c.roadmap.evidenceFourSpecies}
           </Text>
           <View className="items-end">
             <Text className="font-mono-medium text-[17px] text-ink">
@@ -153,7 +154,7 @@ export default function RoadmapDetail() {
         </View>
         <View className="flex-row items-start justify-between border-t border-line py-3">
           <Text className="shrink pr-4 font-plex text-[16px] leading-6 text-ink">
-            The same task under outdoor noise
+            {c.roadmap.evidenceOutdoor}
           </Text>
           <View className="items-end">
             <Text className="font-mono-medium text-[17px] text-ink">{CITED.outdoorNoisePct}%</Text>
@@ -163,9 +164,7 @@ export default function RoadmapDetail() {
           </View>
         </View>
         <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">
-          Published for a mosquito held within 10 cm of the microphone. The drop from a quiet room
-          to a noisy street is the honest limit, and it is why the app refuses more often than it
-          answers.
+          {c.roadmap.evidenceNote}
         </Text>
       </Block>
     </RoadmapScreen>

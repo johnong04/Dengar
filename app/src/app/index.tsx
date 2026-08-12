@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LevelMeter } from '@/components/LevelMeter';
 import { PulseRings } from '@/components/PulseRings';
 import { SyncChip } from '@/components/SyncChip';
+import { useCopy } from '@/copy';
 import { classify } from '@/inference/classify';
 import type { Verdict } from '@/inference/gating';
 import { createLevelSource, type LevelSource } from '@/lib/audioLevel';
@@ -33,6 +34,7 @@ function serialize(v: Verdict): Record<string, string> {
 }
 
 export default function Capture() {
+  const c = useCopy();
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(CAPTURE_SECONDS);
   const [source, setSource] = useState<LevelSource | null>(null);
@@ -118,8 +120,7 @@ export default function Capture() {
   const now = Date.now();
   const thisWeek = detections.filter((d) => now - new Date(d.at).getTime() < WEEK_MS).length;
   const queued = detections.filter((d) => !d.synced).length;
-  const tally =
-    queued > 0 ? `${thisWeek} this week · ${queued} queued offline` : `${thisWeek} this week`;
+  const tally = queued > 0 ? c.capture.tallyQueued(thisWeek, queued) : c.capture.tally(thisWeek);
 
   const listening = phase === 'listening';
   const analyzing = phase === 'analyzing';
@@ -127,12 +128,12 @@ export default function Capture() {
   // While the chip is up, the label compresses to the trust half — the dot still carries mic state.
   const chipUp = !online || queued > 0;
   const micLabel = chipUp
-    ? 'on-device'
+    ? c.capture.micOnDevice
     : listening
-      ? 'recording · on-device'
+      ? c.capture.micRecording
       : analyzing
-        ? 'analyzing · on-device'
-        : 'mic ready · on-device';
+        ? c.capture.micAnalyzing
+        : c.capture.micReady;
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   // Dark ground only while the redirect to /onboarding lands (all hooks above have run).
@@ -143,7 +144,7 @@ export default function Capture() {
       <View className="flex-1 px-5">
         {/* status row — fixed height so the sync chip appearing/disappearing never shifts layout */}
         <View className="mt-4 h-8 flex-row items-center justify-between">
-          <Text className="font-plex-semibold text-[17px] text-ink">Dengar</Text>
+          <Text className="font-plex-semibold text-[17px] text-ink">{c.common.brand}</Text>
           <View className="flex-row items-center gap-2">
             <SyncChip />
             {/* mic state on the trust tint: bright green = ready, blue = live, muted = closed */}
@@ -164,11 +165,11 @@ export default function Capture() {
             reducedMotion={reducedMotion}
             onPress={start}
             disabled={phase !== 'idle'}
-            accessibilityLabel="Listen for 5 seconds"
+            accessibilityLabel={c.capture.listenA11y}
           >
             {phase === 'idle' && (
               <Animated.View entering={enter} className="items-center">
-                <Text className="font-plex-semibold text-[24px] text-bg">Listen</Text>
+                <Text className="font-plex-semibold text-[24px] text-bg">{c.capture.listen}</Text>
                 <Text className="mt-1 font-mono text-[13px] text-bg">5.0 s</Text>
               </Animated.View>
             )}
@@ -187,7 +188,7 @@ export default function Capture() {
             )}
             {analyzing && (
               <Animated.View entering={enter} className="items-center">
-                <Text className="font-mono text-[13px] text-bg">reading wingbeat…</Text>
+                <Text className="font-mono text-[13px] text-bg">{c.capture.analyzing}</Text>
               </Animated.View>
             )}
           </PulseRings>
@@ -195,7 +196,7 @@ export default function Capture() {
           {phase === 'idle' && (
             <Animated.View entering={enter} className="items-center">
               <Text className="mt-8 text-center font-plex-bold text-[30px] leading-9 text-ink">
-                Identify the mosquito{'\n'}that found you
+                {c.capture.headline}
               </Text>
             </Animated.View>
           )}
@@ -206,7 +207,7 @@ export default function Capture() {
                 accessibilityRole="button"
                 className="mt-8 min-h-[44px] items-center justify-center px-6 py-3 active:opacity-70"
               >
-                <Text className="font-plex-medium text-[15px] text-muted">Cancel</Text>
+                <Text className="font-plex-medium text-[15px] text-muted">{c.capture.cancel}</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -215,10 +216,10 @@ export default function Capture() {
         {/* guidance — the instruction and the machine spec it runs at, one block, warm light */}
         <View className="mb-4 items-center rounded-block bg-tint-guide px-5 py-4">
           <Text className="text-center font-plex text-[16px] leading-6 text-tint-guide-ink">
-            Hold your phone within 10 cm.{'\n'}Trapped under a glass works best.
+            {c.capture.guidance}
           </Text>
           <Text className="mt-3 font-mono text-[12px] text-tint-guide-mono">
-            16 kHz · mono · band-SNR gate armed
+            {c.capture.guidanceSpec}
           </Text>
         </View>
 
@@ -232,7 +233,7 @@ export default function Capture() {
                 accessibilityRole="link"
                 className="min-h-[52px] justify-center pr-6 active:opacity-70"
               >
-                <Text className="font-plex-medium text-[15px] text-ink">History</Text>
+                <Text className="font-plex-medium text-[15px] text-ink">{c.capture.history}</Text>
               </Pressable>
             </Link>
             <Link href="/area" asChild>
@@ -240,7 +241,7 @@ export default function Capture() {
                 accessibilityRole="link"
                 className="min-h-[52px] justify-center pr-6 active:opacity-70"
               >
-                <Text className="font-plex-medium text-[15px] text-ink">Area</Text>
+                <Text className="font-plex-medium text-[15px] text-ink">{c.capture.area}</Text>
               </Pressable>
             </Link>
           </View>
@@ -253,9 +254,7 @@ export default function Capture() {
             accessibilityRole="link"
             className="mb-4 min-h-[44px] items-center justify-center active:opacity-70"
           >
-            <Text className="font-plex text-[15px] text-muted">
-              Have an old phone? Set it up as a static node
-            </Text>
+            <Text className="font-plex text-[15px] text-muted">{c.capture.nodeInvite}</Text>
           </Pressable>
         </Link>
       </View>

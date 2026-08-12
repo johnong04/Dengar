@@ -3,8 +3,14 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DirectiveRecord } from '@/components/DirectiveRecord';
+import { type Copy, useCopy } from '@/copy';
 import { activeCluster, district, heat, kpis, trend, type Tone } from '@/data/district';
-import { acknowledge, useAcknowledgement, useAlertFeed, type DirectiveState } from '@/store/dispatch';
+import {
+  acknowledge,
+  useAcknowledgement,
+  useAlertFeed,
+  type DirectiveState,
+} from '@/store/dispatch';
 
 // Officer HOME — Trend (gated direction officer-e, plus John's two amendments).
 //
@@ -49,7 +55,9 @@ const TONE_BG: Record<Tone, string> = {
 
 function Eyebrow({ children }: { children: string }) {
   return (
-    <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">{children}</Text>
+    <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
+      {children}
+    </Text>
   );
 }
 
@@ -92,20 +100,33 @@ function StateDot({ state }: { state: DirectiveState }) {
   );
 }
 
+/** KPI key → its label. `data/district.ts` emits the key; the words live in `src/copy/`. */
+function kpiLabel(key: string, c: Copy): string {
+  return key === 'detections'
+    ? c.officer.kpiDetections
+    : key === 'clusters'
+      ? c.officer.kpiClusters
+      : c.officer.kpiNodes;
+}
+
 export default function OfficerHome() {
+  const c = useCopy();
   const ack = useAcknowledgement();
   const feed = useAlertFeed();
 
   return (
     <SafeAreaView className="flex-1 bg-o-bg">
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── district header ───────────────────────────────────────────── */}
         <View className="flex-row items-center justify-between border-b border-o-line px-5 pb-3 pt-3">
           <View className="flex-row items-center gap-2">
             <Text className="font-plex-semibold text-[17px] text-o-ink">{district.name}</Text>
             {district.simulated ? (
               <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-                <Text className="font-mono text-[10px] text-o-muted">simulated</Text>
+                <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
               </View>
             ) : null}
           </View>
@@ -117,9 +138,10 @@ export default function OfficerHome() {
           {kpis.map((k, i) => (
             <View
               key={k.key}
-              className={`flex-1 px-4 py-2.5 ${i < kpis.length - 1 ? 'border-r border-o-line' : ''}`}>
+              className={`flex-1 px-4 py-2.5 ${i < kpis.length - 1 ? 'border-r border-o-line' : ''}`}
+            >
               <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
-                {k.label}
+                {kpiLabel(k.key, c)}
               </Text>
               <View className="mt-1 flex-row items-baseline gap-1.5">
                 <Text className="font-mono-medium text-[22px] text-o-ink">{k.value}</Text>
@@ -146,7 +168,9 @@ export default function OfficerHome() {
           <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5">
             <View className="flex-1">
               {/* specs.md §1's directive, verbatim in intent: "fog here, within 48 hours". */}
-              <Text className="font-plex-semibold text-[17px] text-o-bg">Fog within 48 h</Text>
+              <Text className="font-plex-semibold text-[17px] text-o-bg">
+                {c.officer.fogWithin48}
+              </Text>
               <Text numberOfLines={1} className="mt-[3px] font-mono text-[11px] text-o-surface">
                 {activeCluster.area} · {activeCluster.blocks}
               </Text>
@@ -155,8 +179,11 @@ export default function OfficerHome() {
               accessibilityRole="button"
               onPress={acknowledge}
               className="min-h-[44px] shrink-0 justify-center rounded-card bg-o-bg px-4"
-              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
-              <Text className="text-center font-plex-semibold text-[15px] text-o-primary">Acknowledge</Text>
+              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+            >
+              <Text className="text-center font-plex-semibold text-[15px] text-o-primary">
+                {c.officer.acknowledge}
+              </Text>
             </Pressable>
           </View>
         )}
@@ -167,13 +194,16 @@ export default function OfficerHome() {
               −14 d…+21 d, so an eyebrow would label a chart that labels itself. */}
           <View className="flex-row items-center justify-start">
             <View className="flex-row items-center gap-3.5">
-              <LegendKey label="detections" swatch={<View className="h-2 w-2 rounded-[2px] bg-o-alert" />} />
               <LegendKey
-                label="rain mm"
+                label={c.officer.legendDetections}
+                swatch={<View className="h-2 w-2 rounded-[2px] bg-o-alert" />}
+              />
+              <LegendKey
+                label={c.officer.legendRain}
                 swatch={<View className="h-2 w-2 rounded-[2px] bg-o-primary-wash" />}
               />
               <LegendKey
-                label="cases · projected"
+                label={c.officer.legendProjected}
                 swatch={
                   <View className="h-2 w-2 rounded-[2px] border border-o-alert bg-o-alert-ghost" />
                 }
@@ -185,8 +215,9 @@ export default function OfficerHome() {
           <View className="mt-2.5 h-4 flex-row items-center">
             <Text
               className="pr-1.5 text-right font-mono text-[10px] text-o-muted"
-              style={{ flex: PAST_DAYS }}>
-              today
+              style={{ flex: PAST_DAYS }}
+            >
+              {c.officer.today}
             </Text>
             <View style={{ width: 1 }} />
             <View style={{ width: 18 }} />
@@ -208,7 +239,11 @@ export default function OfficerHome() {
             {/* measured: rain behind, detections in front */}
             <View className="flex-row items-end" style={{ flex: PAST_DAYS, height: CHART_H }}>
               {trend.detections.map((d, i) => (
-                <View key={`m${i}`} className="flex-1 items-center justify-end" style={{ height: CHART_H }}>
+                <View
+                  key={`m${i}`}
+                  className="flex-1 items-center justify-end"
+                  style={{ height: CHART_H }}
+                >
                   <View
                     className="absolute bottom-0 rounded-t-[2px] bg-o-primary-wash"
                     style={{
@@ -247,7 +282,11 @@ export default function OfficerHome() {
             {/* projected: hollow, so it can never read as measured */}
             <View className="flex-row items-end" style={{ flex: FUTURE_DAYS, height: CHART_H }}>
               {trend.projectedCases.map((c, i) => (
-                <View key={`p${i}`} className="flex-1 items-center justify-end" style={{ height: CHART_H }}>
+                <View
+                  key={`p${i}`}
+                  className="flex-1 items-center justify-end"
+                  style={{ height: CHART_H }}
+                >
                   <View
                     className="rounded-t-[2px] border border-o-alert bg-o-alert-ghost"
                     style={{
@@ -274,16 +313,21 @@ export default function OfficerHome() {
               <Text className="font-mono text-[10px] text-o-muted">+{trend.leadDays.to} d</Text>
             </View>
           </View>
-          <Text className="mt-1 text-right font-mono text-[10px] text-o-muted">projected, not measured</Text>
+          <Text className="mt-1 text-right font-mono text-[10px] text-o-muted">
+            {c.officer.projectedNotMeasured}
+          </Text>
         </View>
 
         {/* ── hour × day ────────────────────────────────────────────────── */}
         <View className="mt-4 px-5">
-          <Eyebrow>Hour × day</Eyebrow>
+          <Eyebrow>{c.officer.hourByDay}</Eyebrow>
           <View className="mt-2">
             {heat.values.map((row, r) => (
               <View key={heat.rows[r]} className="mb-[3px] flex-row items-center gap-[3px]">
-                <Text className="font-mono text-[10px] text-o-muted" style={{ width: HEAT_LABEL_W }}>
+                <Text
+                  className="font-mono text-[10px] text-o-muted"
+                  style={{ width: HEAT_LABEL_W }}
+                >
                   {heat.rows[r]}
                 </Text>
                 {row.map((v, c) =>
@@ -317,23 +361,31 @@ export default function OfficerHome() {
         {/* ── watch areas ───────────────────────────────────────────────── */}
         <View className="mt-4 border-t border-o-line px-5 pt-3">
           <View className="flex-row items-center justify-between">
-            <Eyebrow>Watch areas</Eyebrow>
+            <Eyebrow>{c.officer.watchAreas}</Eyebrow>
             <Link href="/officer/alerts" asChild>
               <Pressable
                 accessibilityRole="link"
-                accessibilityLabel="Open the alert feed"
+                accessibilityLabel={c.officer.alertFeedA11y}
                 className="min-h-[44px] justify-center"
-                style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}>
-                <Text className="font-plex-medium text-[13px] text-o-primary">Alert feed ›</Text>
+                style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+              >
+                <Text className="font-plex-medium text-[13px] text-o-primary">
+                  {c.officer.alertFeed}
+                </Text>
               </Pressable>
             </Link>
           </View>
           {feed.map(({ area: w, state }) => (
-            <Link key={w.id} href={{ pathname: '/officer/cluster/[id]', params: { id: w.id } }} asChild>
+            <Link
+              key={w.id}
+              href={{ pathname: '/officer/cluster/[id]', params: { id: w.id } }}
+              asChild
+            >
               <Pressable
                 accessibilityRole="link"
                 className="min-h-[52px] flex-row items-center gap-3 border-b border-o-line py-3"
-                style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}>
+                style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+              >
                 <StateDot state={state} />
                 <Text className="font-plex-medium text-[13px] text-o-ink" style={{ width: 84 }}>
                   {w.name}
@@ -341,10 +393,14 @@ export default function OfficerHome() {
                 <Spark data={w.spark} tone={w.tone} />
                 <Text
                   className="text-right font-mono-medium text-[13px] text-o-ink"
-                  style={{ width: 24 }}>
+                  style={{ width: 24 }}
+                >
                   {w.count}
                 </Text>
-                <Text className={`text-right font-mono text-[11px] ${TONE_TEXT[w.tone]}`} style={{ width: 30 }}>
+                <Text
+                  className={`text-right font-mono text-[11px] ${TONE_TEXT[w.tone]}`}
+                  style={{ width: 30 }}
+                >
                   {w.delta}
                 </Text>
                 <Text className="font-mono text-[13px] text-o-muted">›</Text>

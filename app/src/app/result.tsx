@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Copy, useCopy } from '@/copy';
 import {
   type AbstainReadings,
   BAND_SNR_FLOOR_DB,
@@ -42,74 +43,85 @@ type AbstainCopy = {
 
 // Readout values come from judge()'s AbstainReadings, serialized through the route params by the
 // capture screen — the numbers the gates actually measured, absent when a gate never ran.
-const score = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? n.toFixed(2) : '—');
-const db = (n: number | undefined) => (typeof n === 'number' && isFinite(n) ? `${n.toFixed(1)} dB` : '—');
+const score = (n: number | undefined) =>
+  typeof n === 'number' && isFinite(n) ? n.toFixed(2) : '—';
+const db = (n: number | undefined) =>
+  typeof n === 'number' && isFinite(n) ? `${n.toFixed(1)} dB` : '—';
 /** No reading → no track. A gate that never ran gets a dash, never an invented bar. */
 const fillOf = (n: number | undefined, floor: number): Fill | undefined =>
   typeof n === 'number' && isFinite(n) ? { value: n, floor } : undefined;
 
-const AUDIO_ROW: ReadoutRow = { label: 'Audio kept', value: 'no', suffix: '· deleted on device' };
+const audioRow = (c: Copy): ReadoutRow => ({
+  label: c.result.audioKept,
+  value: c.result.audioKeptValue,
+  suffix: c.result.audioKeptSuffix,
+});
 
 // The privacy claim, promoted out of the body paragraph into its own trust block — the warm board's
 // single best move, and abstain is ~90% of what a user ever sees. It stands on every abstain and on
 // no other screen: an abstain writes nothing, so "nothing was saved" is unconditionally true here,
 // while a detected verdict CAN be logged.
-const TRUST_TAG = 'nothing kept';
-const TRUST_LINE = 'Nothing was saved; nothing left your phone.';
 
-const ABSTAIN_COPY: Record<AbstainReason, AbstainCopy> = {
-  no_mosquito: {
-    headline: 'No mosquito\nin this recording',
-    body: 'The clip carried no wingbeat signature. Most recordings end here — a clean no is what keeps the map honest.',
-    rows: (r) => [
-      {
-        label: 'Event score',
-        value: score(r.medScore),
-        suffix: `/ floor ${MED_THRESHOLD.toFixed(2)}`,
-        fill: fillOf(r.medScore, MED_THRESHOLD),
-      },
-      {
-        label: 'Band SNR',
-        value: db(r.bandSnrDb),
-        suffix: r.bandSnrDb >= BAND_SNR_FLOOR_DB ? '· usable' : undefined,
-      },
-      AUDIO_ROW,
-    ],
-    guidance: 'Get within 10 cm — under a glass is ideal',
-  },
-  not_confident: {
-    headline: 'Wingbeat heard —\nspecies unresolved',
-    body: "A mosquito was close enough to hear, but the species call didn't clear its floor. This is the one worth retrying — inside 10 cm the signature sharpens fast.",
-    rows: (r) => [
-      { label: 'Event score', value: score(r.medScore), suffix: '· passed' },
-      {
-        label: 'Species call',
-        value: score(r.mscMax),
-        suffix: `/ floor ${MSC_THRESHOLD.toFixed(2)}`,
-        prominent: true,
-        fill: fillOf(r.mscMax, MSC_THRESHOLD),
-      },
-      AUDIO_ROW,
-    ],
-    guidance: 'Get closer — hold within 10 cm — and listen again',
-  },
-  too_noisy: {
-    headline: 'Too loud here\nto hear a wingbeat',
-    body: 'Background sound drowned the wingbeat band before the models could judge it. Refusing beats guessing — a wrong call here would put bad data on the map.',
-    rows: (r) => [
-      {
-        label: 'Band SNR',
-        value: db(r.bandSnrDb),
-        suffix: `/ floor ${BAND_SNR_FLOOR_DB} dB`,
-        prominent: true,
-        fill: fillOf(r.bandSnrDb, BAND_SNR_FLOOR_DB),
-      },
-      { label: 'Event score', value: score(r.medScore), suffix: '· not judged' },
-      AUDIO_ROW,
-    ],
-    guidance: 'Move away from the fan, traffic or TV, then listen again',
-  },
-};
+/**
+ * Threshold values keep their `toFixed` formatting — they are the numbers the gates actually
+ * compared against, and `/ floor 0.50` must read the same in both languages or the readout stops
+ * matching the fill track drawn under it.
+ */
+function abstainCopy(c: Copy): Record<AbstainReason, AbstainCopy> {
+  return {
+    no_mosquito: {
+      headline: c.result.noMosquitoHeadline,
+      body: c.result.noMosquitoBody,
+      rows: (r) => [
+        {
+          label: c.result.eventScore,
+          value: score(r.medScore),
+          suffix: c.result.floor(MED_THRESHOLD.toFixed(2)),
+          fill: fillOf(r.medScore, MED_THRESHOLD),
+        },
+        {
+          label: c.result.bandSnr,
+          value: db(r.bandSnrDb),
+          suffix: r.bandSnrDb >= BAND_SNR_FLOOR_DB ? c.result.usable : undefined,
+        },
+        audioRow(c),
+      ],
+      guidance: c.result.noMosquitoGuidance,
+    },
+    not_confident: {
+      headline: c.result.notConfidentHeadline,
+      body: c.result.notConfidentBody,
+      rows: (r) => [
+        { label: c.result.eventScore, value: score(r.medScore), suffix: c.result.passed },
+        {
+          label: c.result.speciesCall,
+          value: score(r.mscMax),
+          suffix: c.result.floor(MSC_THRESHOLD.toFixed(2)),
+          prominent: true,
+          fill: fillOf(r.mscMax, MSC_THRESHOLD),
+        },
+        audioRow(c),
+      ],
+      guidance: c.result.notConfidentGuidance,
+    },
+    too_noisy: {
+      headline: c.result.tooNoisyHeadline,
+      body: c.result.tooNoisyBody,
+      rows: (r) => [
+        {
+          label: c.result.bandSnr,
+          value: db(r.bandSnrDb),
+          suffix: c.result.floor(`${BAND_SNR_FLOOR_DB} dB`),
+          prominent: true,
+          fill: fillOf(r.bandSnrDb, BAND_SNR_FLOOR_DB),
+        },
+        { label: c.result.eventScore, value: score(r.medScore), suffix: c.result.notJudged },
+        audioRow(c),
+      ],
+      guidance: c.result.tooNoisyGuidance,
+    },
+  };
+}
 
 /** Route param → readings. Absent/garbled param (direct URL) renders honest dashes, never invents. */
 function parseReadings(param: string | undefined): AbstainReadings {
@@ -144,16 +156,24 @@ function parseConfidence(param: string | undefined): number | undefined {
 }
 
 /** taxon/sex/gravid rows — each independently optional (specs.md §6); absent fields render nothing. */
-function detailRows(detail: SpeciesDetail | undefined): ReadoutRow[] {
+function detailRows(detail: SpeciesDetail | undefined, c: Copy): ReadoutRow[] {
   const rows: ReadoutRow[] = [];
   if (detail?.taxon?.name && typeof detail.taxon.confidence === 'number')
-    rows.push({ label: 'Species', value: detail.taxon.name, suffix: `· ${score(detail.taxon.confidence)}` });
+    rows.push({
+      label: c.result.species,
+      value: detail.taxon.name,
+      suffix: `· ${score(detail.taxon.confidence)}`,
+    });
   if (detail?.sex?.value && typeof detail.sex.confidence === 'number')
-    rows.push({ label: 'Sex', value: detail.sex.value, suffix: `· ${score(detail.sex.confidence)}` });
+    rows.push({
+      label: c.result.sex,
+      value: c.result.sexValue(detail.sex.value),
+      suffix: `· ${score(detail.sex.confidence)}`,
+    });
   if (detail?.gravid && typeof detail.gravid.confidence === 'number')
     rows.push({
-      label: 'Gravid',
-      value: detail.gravid.value ? 'yes' : 'no',
+      label: c.result.gravid,
+      value: detail.gravid.value ? c.common.yes : c.common.no,
       suffix: `· ${score(detail.gravid.confidence)}`,
     });
   return rows;
@@ -223,14 +243,14 @@ function Readouts({ rows }: { rows: ReadoutRow[] }) {
 }
 
 /** The promoted privacy claim: cool trust tint, mono tag, prose in ink. Abstain screens only. */
-function TrustBlock() {
+function TrustBlock({ c }: { c: Copy }) {
   return (
     <View className="mt-6 rounded-block bg-tint-trust px-5 py-4">
       <View className="flex-row items-center gap-2">
         <View className="h-1.5 w-1.5 rounded-full bg-ok-bright" />
-        <Text className="font-mono text-[12px] text-tint-trust-ink">{TRUST_TAG}</Text>
+        <Text className="font-mono text-[12px] text-tint-trust-ink">{c.result.trustTag}</Text>
       </View>
-      <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">{TRUST_LINE}</Text>
+      <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">{c.result.trustLine}</Text>
     </View>
   );
 }
@@ -245,16 +265,18 @@ function Detected({
   params,
   reducedMotion,
   stamp,
+  c,
 }: {
   params: DetectedParams;
   reducedMotion: boolean;
   stamp: string;
+  c: Copy;
 }) {
   const species: Species | undefined =
     params.species === 'aedes' || params.species === 'not_aedes' ? params.species : undefined;
   const confidence = parseConfidence(params.confidence);
   const detail = parseDetail(params.detail);
-  const rows = detailRows(detail);
+  const rows = detailRows(detail, c);
 
   // Log must write exactly one record: the ref blocks a second press synchronously, the state
   // disables the control. Discard never writes.
@@ -287,8 +309,8 @@ function Detected({
   if (species === 'aedes') {
     const pct = Math.round(confidence! * 100);
     const context = [
-      'confident',
-      detail?.sex?.value,
+      c.result.confident,
+      detail?.sex?.value ? c.result.sexValue(detail.sex.value) : undefined,
       detail?.taxon?.name?.replace(/^Aedes\s+/, 'Ae. '),
     ]
       .filter(Boolean)
@@ -300,7 +322,14 @@ function Detected({
         <Animated.View entering={reveal} style={{ flex: 1 }}>
           {/* the drench: 28 solid bands from → to, a vertical gradient with no dependency */}
           <View
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              pointerEvents: 'none',
+            }}
           >
             {DRENCH_STOPS.map((band, i) => (
               <View key={i} style={{ flex: 1, backgroundColor: band }} />
@@ -314,11 +343,11 @@ function Detected({
                 <Pressable
                   onPress={discard}
                   accessibilityRole="button"
-                  accessibilityLabel="Back to capture"
+                  accessibilityLabel={c.common.backToCapture}
                   className="min-h-[44px] justify-center pr-6 active:opacity-70"
                 >
                   <Text className="font-plex-medium text-[15px] text-verdict-aedes-soft">
-                    ← Result
+                    ← {c.result.back}
                   </Text>
                 </Pressable>
                 <Text className="font-mono text-[12px] text-verdict-aedes-soft">{stamp}</Text>
@@ -327,10 +356,10 @@ function Detected({
               {/* verdict */}
               <View className="mt-12">
                 <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
-                  Aedes.
+                  {c.result.aedesVerdict}
                 </Text>
                 <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
-                  The mosquito that found you{'\n'}carries dengue.
+                  {c.result.aedesBody}
                 </Text>
 
                 {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
@@ -372,11 +401,10 @@ function Detected({
                 {/* the stakes, raised */}
                 <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
                   <Text className="font-mono text-[12px] text-verdict-aedes-soft">
-                    why this matters
+                    {c.result.whyThisMatters}
                   </Text>
                   <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">
-                    Logging this puts one more point on your district&apos;s map. Fourteen detections
-                    in 72 hours is what sends a fogging truck.
+                    {c.result.aedesStakes}
                   </Text>
                 </View>
               </View>
@@ -392,7 +420,7 @@ function Detected({
                   className="min-h-[52px] items-center justify-center rounded-pill bg-warm-white py-4 active:opacity-90 disabled:opacity-60"
                 >
                   <Text className="font-plex-semibold text-[17px] text-verdict-aedes-deep">
-                    Log detection
+                    {c.result.logDetection}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -402,7 +430,7 @@ function Detected({
                   className="min-h-[44px] items-center justify-center py-2 active:opacity-70"
                 >
                   <Text className="font-plex-medium text-[15px] text-verdict-aedes-soft">
-                    Discard
+                    {c.result.discard}
                   </Text>
                 </Pressable>
               </View>
@@ -418,14 +446,14 @@ function Detected({
   // would be a claim the screen cannot keep.
   const quietRows: ReadoutRow[] = [
     {
-      label: 'Species call',
+      label: c.result.speciesCall,
       value: confidence !== undefined ? score(confidence) : '—',
-      suffix: confidence !== undefined ? `/ floor ${MSC_THRESHOLD.toFixed(2)}` : undefined,
+      suffix: confidence !== undefined ? c.result.floor(MSC_THRESHOLD.toFixed(2)) : undefined,
       prominent: true,
       fill: fillOf(confidence, MSC_THRESHOLD),
     },
     ...rows,
-    AUDIO_ROW,
+    audioRow(c),
   ];
 
   return (
@@ -436,10 +464,10 @@ function Detected({
           <Pressable
             onPress={discard}
             accessibilityRole="button"
-            accessibilityLabel="Back to capture"
+            accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← Result</Text>
+            <Text className="font-plex-medium text-[15px] text-muted">← {c.result.back}</Text>
           </Pressable>
           <Text className="font-mono text-[12px] text-muted">{stamp}</Text>
         </View>
@@ -448,11 +476,10 @@ function Detected({
           {/* verdict */}
           <View className="mt-8">
             <Text className="font-plex-bold text-[34px] leading-10 text-ink">
-              Not a dengue{'\n'}vector
+              {c.result.notAedesHeadline}
             </Text>
             <Text className="mt-4 font-plex text-[16px] leading-6 text-muted">
-              The wingbeat was clear enough to judge, and it isn&apos;t an Aedes. Logging it still
-              helps your district&apos;s map — knowing where the vector isn&apos;t is data too.
+              {c.result.notAedesBody}
             </Text>
           </View>
 
@@ -470,7 +497,9 @@ function Detected({
                 accessibilityRole="button"
                 className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90 disabled:opacity-60"
               >
-                <Text className="font-plex-semibold text-[17px] text-bg">Log detection</Text>
+                <Text className="font-plex-semibold text-[17px] text-bg">
+                  {c.result.logDetection}
+                </Text>
               </Pressable>
             )}
             <Pressable
@@ -479,7 +508,7 @@ function Detected({
               accessibilityRole="button"
               className="min-h-[44px] items-center justify-center py-2 active:opacity-70"
             >
-              <Text className="font-plex-medium text-[15px] text-muted">Discard</Text>
+              <Text className="font-plex-medium text-[15px] text-muted">{c.result.discard}</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -499,15 +528,17 @@ export default function Result() {
   }>();
   const reducedMotion = useReducedMotion();
   const stamp = useCaptureStamp();
+  const c = useCopy();
 
   // A detected verdict must name a species the instrument can stand behind. A garbled species
   // param (hand-typed URL) falls through to the no_mosquito abstain with honest dashes — the
   // not_aedes layout would falsely claim "the wingbeat was clear enough to judge".
   if (params.kind === 'detected' && (params.species === 'aedes' || params.species === 'not_aedes'))
-    return <Detected params={params} reducedMotion={reducedMotion} stamp={stamp} />;
+    return <Detected params={params} reducedMotion={reducedMotion} stamp={stamp} c={c} />;
 
+  const abstain = abstainCopy(c);
   const reason = (params.reason ?? 'no_mosquito') as AbstainReason;
-  const copy = ABSTAIN_COPY[reason] ?? ABSTAIN_COPY.no_mosquito;
+  const copy = abstain[reason] ?? abstain.no_mosquito;
   const rows = copy.rows(parseReadings(params.readings));
   // Verdict reveal: 240 ms fade. Under prefers-reduced-motion the entering animation is dropped
   // (reanimated also auto-disables it) — the screen appears as a plain crossfade-equivalent cut.
@@ -521,10 +552,10 @@ export default function Result() {
           <Pressable
             onPress={backToCapture}
             accessibilityRole="button"
-            accessibilityLabel="Back to capture"
+            accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← Result</Text>
+            <Text className="font-plex-medium text-[15px] text-muted">← {c.result.back}</Text>
           </Pressable>
           <Text className="font-mono text-[12px] text-muted">{stamp}</Text>
         </View>
@@ -538,7 +569,7 @@ export default function Result() {
           </View>
 
           {/* the privacy claim, out of the paragraph and into its own block */}
-          <TrustBlock />
+          <TrustBlock c={c} />
 
           {/* the instrument says why, in its own units */}
           <Readouts rows={rows} />
@@ -557,14 +588,14 @@ export default function Result() {
               accessibilityRole="button"
               className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90"
             >
-              <Text className="font-plex-semibold text-[17px] text-bg">Listen again</Text>
+              <Text className="font-plex-semibold text-[17px] text-bg">{c.result.listenAgain}</Text>
             </Pressable>
             <Pressable
               onPress={backToCapture}
               accessibilityRole="button"
               className="min-h-[44px] items-center justify-center py-2 active:opacity-70"
             >
-              <Text className="font-plex-medium text-[15px] text-muted">Done</Text>
+              <Text className="font-plex-medium text-[15px] text-muted">{c.result.done}</Text>
             </Pressable>
           </View>
         </Animated.View>

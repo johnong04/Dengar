@@ -131,12 +131,8 @@ export const INDIRECT_PER_CASE: Figure = {
  * number would therefore be invented, and an invented impact stat is the single most disqualifying
  * thing this app could display (slice plan 19). It is shown as an absence, with the reason.
  */
-export const OMITTED_CASES_AVERTED = {
-  heading: 'Cases averted',
-  value: 'not shown',
-  reason:
-    'No figure in our evidence base links a detection to a prevented case. We would have to invent the multiplier, so we do not print one.',
-} as const;
+// The heading, the placeholder and the reason are PROSE, so they live in `src/copy/` with every
+// other user-facing string (slice 18). This module keeps emitting figures and arithmetic only.
 
 // ── Privacy screen: payload sizes ─────────────────────────────────────────────────
 const clipBytes = AUDIO.sampleRate * AUDIO.seconds * AUDIO.bytesPerSample;

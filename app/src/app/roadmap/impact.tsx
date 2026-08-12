@@ -7,6 +7,7 @@ import {
   RoadmapScreen,
   SimulatedTag,
 } from '@/components/RoadmapChrome';
+import { useCopy } from '@/copy';
 import {
   CITED,
   CITIZEN_MONTHLY,
@@ -14,7 +15,6 @@ import {
   COST_RATIO,
   DISTRICT_EXTENT,
   INDIRECT_PER_CASE,
-  OMITTED_CASES_AVERTED,
   OVITRAP_MONTHLY,
 } from '@/lib/impact';
 import { useDetections } from '@/store/detections';
@@ -33,71 +33,67 @@ import { useDetections } from '@/store/detections';
  * one would require inventing a multiplier. The omission block is the most defensible thing here.
  */
 export default function RoadmapImpact() {
+  const c = useCopy();
   const detections = useDetections();
   const total = detections.length;
   const aedes = detections.filter((d) => d.species === 'aedes').length;
 
   return (
     <RoadmapScreen
-      title="Impact"
+      title={c.roadmap.impactLabel}
       self="impact"
-      headline={'What your taps\nadd up to.'}
-      standing="Not built yet — there is no fleet behind this, only your own log. Every derived figure below shows the arithmetic that produced it."
+      headline={c.roadmap.impactHeadline}
+      standing={c.roadmap.impactStanding}
     >
-      <Block heading="contributed" tag={<SimulatedTag />}>
+      <Block heading={c.roadmap.contributed} tag={<SimulatedTag />}>
         <View className="flex-row items-end justify-between py-2">
           <View>
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">{total}</Text>
             <Text className="mt-1 font-plex text-[15px] text-muted">
-              {total === 1 ? 'detection logged' : 'detections logged'}
+              {total === 1 ? c.roadmap.detectionLogged : c.roadmap.detectionsLogged}
             </Text>
           </View>
           <View className="items-end">
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">{aedes}</Text>
             <Text className="mt-1 font-plex text-[15px] text-muted">
-              {aedes === 1 ? 'was Aedes' : 'were Aedes'}
+              {aedes === 1 ? c.roadmap.wasAedes : c.roadmap.wereAedes}
             </Text>
           </View>
         </View>
         <Text className="mt-1 font-plex text-[15px] leading-6 text-muted">
-          Counted from this device&apos;s log, which is seeded for the demo. This is the only figure
-          on the screen that is a count rather than an estimate.
+          {c.roadmap.contributedNote}
         </Text>
       </Block>
 
-      <Block heading="district extent">
+      <Block heading={c.roadmap.districtExtent}>
         {/* "footprint", not "area covered": the caption below already has to walk back a coverage
             claim, and a label that does not make one is better than a caption that undoes it. */}
-        <FigureRow label="Map sheet footprint" figure={DISTRICT_EXTENT} />
-        <Text className="font-mono text-[12px] text-muted">
-          bounds: Setapak sheet · OpenStreetMap z15
-        </Text>
+        <FigureRow label={c.roadmap.mapFootprint} figure={DISTRICT_EXTENT} />
+        <Text className="font-mono text-[12px] text-muted">{c.roadmap.boundsNote}</Text>
         <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">
-          The bundled map sheet&apos;s own footprint — geometry, not a coverage claim. Nobody is
-          watching all of it.
+          {c.roadmap.extentNote}
         </Text>
       </Block>
 
-      <Block heading="what surveillance costs at that extent">
-        <FigureRow label="Citizen reports" figure={CITIZEN_MONTHLY} />
+      <Block heading={c.roadmap.costHeading}>
+        <FigureRow label={c.roadmap.citizenReports} figure={CITIZEN_MONTHLY} />
         <View className="h-px bg-line" />
-        <FigureRow label="Ovitraps, same area" figure={OVITRAP_MONTHLY} />
+        <FigureRow label={c.roadmap.ovitraps} figure={OVITRAP_MONTHLY} />
         <View className="h-px bg-line" />
-        <FigureRow label="Difference" figure={COST_RATIO} />
+        <FigureRow label={c.roadmap.difference} figure={COST_RATIO} />
         <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">
-          Per-km² rates come from the Mosquito Alert comparison. The multiplication is ours, which
-          is why it is printed.
+          {c.roadmap.costNote}
         </Text>
       </Block>
 
-      <Block heading="what one dengue case costs">
-        <FigureRow label="Per case, Malaysia" figure={COST_PER_CASE} />
+      <Block heading={c.roadmap.caseCostHeading}>
+        <FigureRow label={c.roadmap.perCase} figure={COST_PER_CASE} />
         <View className="h-px bg-line" />
-        <FigureRow label="Of that, lost wages" figure={INDIRECT_PER_CASE} />
+        <FigureRow label={c.roadmap.lostWages} figure={INDIRECT_PER_CASE} />
         <View className="flex-row items-start justify-between border-t border-line py-3">
           <View className="shrink pr-4">
-            <Text className="font-plex text-[16px] leading-6 text-ink">Days lost per case</Text>
-            <Text className="mt-1 font-mono text-[12px] text-muted">work · school</Text>
+            <Text className="font-plex text-[16px] leading-6 text-ink">{c.roadmap.daysLost}</Text>
+            <Text className="mt-1 font-mono text-[12px] text-muted">{c.roadmap.workSchool}</Text>
           </View>
           <View className="items-end">
             <Text className="font-mono-medium text-[17px] text-ink">
@@ -115,18 +111,17 @@ export default function RoadmapImpact() {
       <Block>
         <View className="flex-row items-start justify-between py-2">
           <Text className="shrink pr-4 font-plex-medium text-[16px] leading-6 text-ink">
-            {OMITTED_CASES_AVERTED.heading}
+            {c.roadmap.casesAverted}
           </Text>
-          <Text className="font-mono text-[17px] text-muted">{OMITTED_CASES_AVERTED.value}</Text>
+          <Text className="font-mono text-[17px] text-muted">{c.roadmap.notShown}</Text>
         </View>
         <Text className="font-plex text-[16px] leading-6 text-muted">
-          {OMITTED_CASES_AVERTED.reason}
+          {c.roadmap.casesAvertedReason}
         </Text>
       </Block>
 
       <Text className="mt-5 font-mono text-[12px] leading-5 text-muted">
-        [cited] figures come from the project evidence base. [modeled] figures are our arithmetic on
-        those, shown in full. Nothing that could not be derived appears at all.
+        {c.roadmap.tagFootnote}
       </Text>
     </RoadmapScreen>
   );

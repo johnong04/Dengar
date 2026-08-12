@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DirectiveRecord } from '@/components/DirectiveRecord';
+import { type Copy, useCopy } from '@/copy';
 import {
   CLUSTER_RING_RADIUS_M,
   FOG_BY_STAMP,
@@ -74,10 +75,10 @@ const TONE_TEXT: Record<Tone, string> = {
   caution: 'text-o-caution',
   neutral: 'text-o-muted',
 };
-const LEGEND: { band: Recency; label: string }[] = [
-  { band: 0, label: '< 24 h' },
-  { band: 1, label: '48 h' },
-  { band: 2, label: '72 h' },
+const legendOf = (c: Copy): { band: Recency; label: string }[] => [
+  { band: 0, label: c.officer.band24 },
+  { band: 1, label: c.officer.band48 },
+  { band: 2, label: c.officer.band72 },
 ];
 
 /** Mid-point of a set of blocks, in the two axes the projection treats independently. */
@@ -109,20 +110,28 @@ function FloatLabel({
 }) {
   const [size, setSize] = useState<Size | null>(null);
   const left = size
-    ? Math.min(Math.max(PILL_GUTTER, at.x - size.width / 2), viewportWidth - size.width - PILL_GUTTER)
+    ? Math.min(
+        Math.max(PILL_GUTTER, at.x - size.width / 2),
+        viewportWidth - size.width - PILL_GUTTER,
+      )
     : at.x;
   const top = size ? (below ? at.y + 12 : at.y - size.height - 12) : at.y;
   return (
     <View
-      onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+      onLayout={(e) =>
+        setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
+      }
       className={className}
-      style={{ position: 'absolute', left, top, opacity: size ? 1 : 0 }}>
+      style={{ position: 'absolute', left, top, opacity: size ? 1 : 0 }}
+    >
       {children}
     </View>
   );
 }
 
 export default function ClusterDetail() {
+  const c = useCopy();
+  const LEGEND = legendOf(c);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   // The record lives in `store/dispatch.ts`, not in this screen: signing it here has to update the
@@ -141,7 +150,10 @@ export default function ClusterDetail() {
   // so `MAP_FOCUS_LON_SPAN` fills the width. The sheet overlaps the map, so the map is fitted to
   // the band the sheet leaves VISIBLE — that is what keeps the cluster optically centred.
   const centre = blocks.length ? blocksCentre(blocks) : area.center;
-  const visible: Size = { width: map?.width ?? 0, height: Math.max(1, (map?.height ?? 0) - sheetH) };
+  const visible: Size = {
+    width: map?.width ?? 0,
+    height: Math.max(1, (map?.height ?? 0) - sheetH),
+  };
   const focus: Bounds = {
     north: centre.lat,
     south: centre.lat,
@@ -178,17 +190,18 @@ export default function ClusterDetail() {
       <View className="flex-row items-center border-b border-o-line pl-1 pr-5">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back to district"
+          accessibilityLabel={c.common.backToDistrict}
           onPress={() => router.back()}
           className="h-11 w-11 items-center justify-center"
-          style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}>
+          style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+        >
           <Text className="font-plex-medium text-[22px] text-o-primary">‹</Text>
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
           <Text className="font-plex-semibold text-[17px] text-o-ink">{area.name}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-              <Text className="font-mono text-[10px] text-o-muted">simulated</Text>
+              <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -200,13 +213,14 @@ export default function ClusterDetail() {
         className="flex-1 overflow-hidden bg-o-surface"
         onLayout={(e) =>
           setMap({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
-        }>
+        }
+      >
         {ready ? (
           <>
             <Image
               source={MAP_IMAGE}
               contentFit="fill"
-              accessibilityLabel={`OpenStreetMap basemap of ${district.name}`}
+              accessibilityLabel={c.area.basemapA11y(district.name)}
               style={{
                 position: 'absolute',
                 left: offset.x,
@@ -258,15 +272,25 @@ export default function ClusterDetail() {
                      photographic raster that value is invisible, and an invisible survey boundary is
                      not a hairline, it is a missing one. Hairline rules elsewhere stay `o-line`. */
                   className={`items-start justify-end p-[3px] ${b.hot ? 'border border-o-alert' : 'border border-o-muted'}`}
-                  style={{ position: 'absolute', ...r, borderRadius: 3 }}>
+                  style={{ position: 'absolute', ...r, borderRadius: 3 }}
+                >
                   {b.hot ? (
                     <View
                       className="bg-o-alert"
-                      style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: 0.12 }}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        opacity: 0.12,
+                      }}
                     />
                   ) : null}
                   <View className="rounded-[3px] bg-o-bg px-1">
-                    <Text className={`font-mono text-[10px] ${b.hot ? 'text-o-alert' : 'text-o-muted'}`}>
+                    <Text
+                      className={`font-mono text-[10px] ${b.hot ? 'text-o-alert' : 'text-o-muted'}`}
+                    >
                       {b.id}
                     </Text>
                   </View>
@@ -309,7 +333,8 @@ export default function ClusterDetail() {
                      unsigned one, which shortens the visible map and lifts every projected point —
                      a label is not allowed to collide with the readouts just because the sheet grew. */
                   below={p.y < 64}
-                  className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1">
+                  className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1"
+                >
                   <Text className="font-plex-medium text-[11px] text-o-muted">{l.name}</Text>
                 </FloatLabel>
               );
@@ -319,7 +344,8 @@ export default function ClusterDetail() {
             <FloatLabel
               at={hotTop}
               viewportWidth={visible.width}
-              className={`flex-row items-center gap-2 rounded-pill px-2.5 py-1 ${TONE_BG[area.tone]}`}>
+              className={`flex-row items-center gap-2 rounded-pill px-2.5 py-1 ${TONE_BG[area.tone]}`}
+            >
               <Text className="font-plex-semibold text-[11px] text-o-bg">{area.name}</Text>
               <Text className="font-mono-medium text-[11px] text-o-bg">{area.count}</Text>
             </FloatLabel>
@@ -327,7 +353,8 @@ export default function ClusterDetail() {
             {/* legend — the counts are the same 14, split by band, so it is data and not a key */}
             <View
               className="flex-row items-center gap-3 rounded-pill border border-o-line bg-o-bg px-2.5 py-1.5"
-              style={{ position: 'absolute', left: PILL_GUTTER, top: PILL_GUTTER }}>
+              style={{ position: 'absolute', left: PILL_GUTTER, top: PILL_GUTTER }}
+            >
               {LEGEND.map((l, i) => (
                 <View key={l.label} className="flex-row items-center gap-1.5">
                   <View
@@ -344,10 +371,11 @@ export default function ClusterDetail() {
             {hasCluster ? (
               <View
                 className="rounded-pill border border-o-line bg-o-bg px-2.5 py-1.5"
-                style={{ position: 'absolute', right: PILL_GUTTER, top: PILL_GUTTER }}>
+                style={{ position: 'absolute', right: PILL_GUTTER, top: PILL_GUTTER }}
+              >
                 <View className="flex-row items-center gap-1.5">
                   <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
-                    Rain
+                    {c.officer.rain}
                   </Text>
                   <Text className="font-mono-medium text-[11px] text-o-primary">
                     +{activeCluster.rainMm} mm
@@ -370,7 +398,8 @@ export default function ClusterDetail() {
                 obligation on every surface that renders this raster — quiet, but always. */}
             <View
               className="flex-row items-center gap-2.5 rounded-pill border border-o-line bg-o-bg px-2.5 py-1"
-              style={{ position: 'absolute', left: PILL_GUTTER, top: visible.height - 40 }}>
+              style={{ position: 'absolute', left: PILL_GUTTER, top: visible.height - 40 }}
+            >
               <View className="items-center">
                 <Text className="font-mono text-[10px] text-o-muted">{SCALE_BAR_M} m</Text>
                 <View className="mt-[2px] flex-row items-end" style={{ width: barW }}>
@@ -389,7 +418,8 @@ export default function ClusterDetail() {
         <View
           onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
           className="rounded-t-card border-t border-o-line bg-o-bg px-5 pb-5 pt-4"
-          style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+        >
           <View className="flex-row items-baseline justify-between">
             <View className="flex-row items-center gap-2">
               <View
@@ -401,9 +431,8 @@ export default function ClusterDetail() {
                 <Text className="font-mono text-[11px] text-o-muted">{activeCluster.blocks}</Text>
               ) : null}
             </View>
-            <Text
-              className={`font-mono-medium text-[13px] ${TONE_TEXT[area.tone]}`}>
-              {area.count} / {activeCluster.windowHours} h
+            <Text className={`font-mono-medium text-[13px] ${TONE_TEXT[area.tone]}`}>
+              {c.officer.countHours(area.count, activeCluster.windowHours)}
             </Text>
           </View>
 
@@ -413,7 +442,8 @@ export default function ClusterDetail() {
               {blocks.map((b) => (
                 <View
                   key={b.id}
-                  className={`h-11 flex-1 items-center justify-center rounded-card ${b.hot ? 'bg-o-alert' : 'bg-o-surface'}`}>
+                  className={`h-11 flex-1 items-center justify-center rounded-card ${b.hot ? 'bg-o-alert' : 'bg-o-surface'}`}
+                >
                   <Text className={`font-mono text-[11px] ${b.hot ? 'text-o-bg' : 'text-o-muted'}`}>
                     {b.id}
                   </Text>
@@ -430,23 +460,28 @@ export default function ClusterDetail() {
           ) : hasCluster ? (
             <>
               <View className="mt-4 flex-row items-baseline justify-between">
-                <Text className="font-plex-semibold text-[20px] text-o-ink">Fog within 48 h</Text>
+                <Text className="font-plex-semibold text-[20px] text-o-ink">
+                  {c.officer.fogWithin48}
+                </Text>
                 <Text className="font-mono text-[12px] text-o-muted">{FOG_BY_STAMP}</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
                 onPress={acknowledge}
                 className="mt-3 min-h-[48px] items-center justify-center rounded-card bg-o-primary"
-                style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}>
-                <Text className="font-plex-semibold text-[15px] text-o-bg">Acknowledge</Text>
+                style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+              >
+                <Text className="font-plex-semibold text-[15px] text-o-bg">
+                  {c.officer.acknowledge}
+                </Text>
               </Pressable>
             </>
           ) : (
             <View className="mt-4">
-              <Text className="font-plex-medium text-[15px] text-o-ink">No cluster · monitoring</Text>
+              <Text className="font-plex-medium text-[15px] text-o-ink">{c.officer.noCluster}</Text>
               <Text className="mt-1 font-mono text-[11px] text-o-muted">
-                {area.count === 0 ? `silent ${area.delta}` : `${area.delta} on 72 h`} · no fogging
-                directive
+                {area.count === 0 ? c.officer.silent(area.delta) : c.officer.deltaOn72(area.delta)}
+                {c.officer.noDirective}
               </Text>
             </View>
           )}

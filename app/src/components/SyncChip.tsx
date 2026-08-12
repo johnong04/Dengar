@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { useCopy } from '@/copy';
 import { useConnectivity } from '@/lib/connectivity';
 import { useDetections } from '@/store/detections';
 
@@ -11,13 +12,14 @@ import { useDetections } from '@/store/detections';
  * so appearing/disappearing never shifts layout vertically.
  */
 export function SyncChip() {
+  const c = useCopy();
   const online = useConnectivity();
   const detections = useDetections();
   const pending = detections.filter((d) => !d.synced).length;
 
   if (online && pending === 0) return null;
 
-  const label = online ? `syncing ${pending}…` : `offline · ${pending} queued`;
+  const label = online ? c.sync.syncing(pending) : c.sync.offline(pending);
 
   return (
     <View className="rounded-pill bg-surface-raised px-3 py-1">

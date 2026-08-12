@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
+import { useCopy } from '@/copy';
 import { district } from '@/data/district';
 
 // Header for the v3 ROADMAP screens (specs.md §5 v3 — aspirational, frontend only, clearly framed
@@ -14,13 +15,14 @@ import { district } from '@/data/district';
 // mono stamp off the right edge, and a marker that scrolls out of frame is not a marker.
 
 export function RoadmapHeader({ title, kicker }: { title: string; kicker: string }) {
+  const c = useCopy();
   const router = useRouter();
   return (
     <View className="border-b border-o-line pb-3">
       <View className="flex-row items-center pl-1 pr-5">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={c.common.back}
           // Deep-linked (a screenshot run, a shared URL) there is no history to pop, so fall back
           // to the officer home. `/officer/index` is how expo-router's generated href union spells
           // that route while `officer/_layout` is a Stack.
@@ -35,11 +37,11 @@ export function RoadmapHeader({ title, kicker }: { title: string; kicker: string
       </View>
       <View className="flex-row items-center gap-2 pl-5 pr-5">
         <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-          <Text className="font-mono text-[10px] text-o-caution">roadmap · v3</Text>
+          <Text className="font-mono text-[10px] text-o-caution">{c.roadmap.markV3}</Text>
         </View>
         {district.simulated ? (
           <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-            <Text className="font-mono text-[10px] text-o-muted">simulated</Text>
+            <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
           </View>
         ) : null}
         <Text className="flex-1 font-plex text-[11px] text-o-muted" numberOfLines={1}>

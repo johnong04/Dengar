@@ -221,7 +221,8 @@ export const economics = {
 export type LedgerRow = {
   math: string;
   result: string;
-  note: string;
+  /** The row's caption is PROSE, so it lives in `src/copy/`; this is the key the screen looks up. */
+  note: 'national' | 'district' | 'fogging' | 'released' | 'programme' | 'input';
   tag: 'cited' | 'modeled';
 };
 
@@ -229,31 +230,31 @@ export const ledger: readonly LedgerRow[] = [
   {
     math: `USD ${CITED.nationalUsdM}M / yr`,
     result: '',
-    note: 'national vector-control programme',
+    note: 'national',
     tag: 'cited',
   },
   {
     math: `× ${(CITED.districtShare * 100).toFixed(1)}%`,
     result: `USD ${economics.districtUsdM.toFixed(1)}M / yr`,
-    note: 'district level, primarily fogging',
+    note: 'district',
     tag: 'modeled',
   },
   {
     math: `USD ${CITED.dhdUsdPerCase} × ${(CITED.foggingShareOfDhd * 100).toFixed(1)}%`,
     result: `USD ${economics.foggingUsdPerCase.toFixed(1)} / case`,
-    note: 'fogging inside the DHD cost per case',
+    note: 'fogging',
     tag: 'modeled',
   },
   {
     math: `USD ${economics.foggingUsdPerCase.toFixed(1)} × ${(economics.releasedShare * 100).toFixed(1)}%`,
     result: `USD ${economics.releasedUsdPerCase.toFixed(1)} / case`,
-    note: 'released — ground the truck never enters',
+    note: 'released',
     tag: 'modeled',
   },
   {
     math: `USD ${CITED.programmeUsdPerCase.toLocaleString('en-US')} / case`,
     result: '',
-    note: 'what one case costs the programme',
+    note: 'programme',
     tag: 'cited',
   },
   {
@@ -263,7 +264,7 @@ export const ledger: readonly LedgerRow[] = [
     // is born.
     math: `EUR ${CITED.ovitrapEurPerKm2Month} ÷ ${CITED.citizenEurPerKm2Month}`,
     result: `${(CITED.ovitrapEurPerKm2Month / CITED.citizenEurPerKm2Month).toFixed(1)}× (§9: ${CITED.ovitrapMultiple})`,
-    note: 'input layer — citizen science against ovitraps, per km² / month',
+    note: 'input',
     tag: 'cited',
   },
 ];

@@ -4,41 +4,53 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { SyncChip } from '@/components/SyncChip';
+import { type Copy, useCopy } from '@/copy';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { type Detection, useDetections } from '@/store/detections';
 
 const score = (n: number) => n.toFixed(2);
 const pad = (n: number) => String(n).padStart(2, '0');
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 /** "today 19:42" / "yesterday 06:58" / "11 Aug 21:42" — relative where it reads, dated where it must. */
-function timeLabel(iso: string): string {
+function timeLabel(iso: string, c: Copy): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const now = new Date();
-  if (sameDay(d, now)) return `today ${hm}`;
+  if (sameDay(d, now)) return `${c.history.today} ${hm}`;
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (sameDay(d, yesterday)) return `yesterday ${hm}`;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${hm}`;
+  if (sameDay(d, yesterday)) return `${c.history.yesterday} ${hm}`;
+  return `${d.getDate()} ${c.history.months[d.getMonth()]} ${hm}`;
 }
 
 /** Full stamp for the expanded readout: "11 Aug 2026 · 21:42". */
-function fullStamp(iso: string): string {
+function fullStamp(iso: string, c: Copy): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getDate()} ${c.history.months[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** "female · Aedes aegypti" — only the heads that reported (specs.md §6). */
-function detailInline(d: Detection): string | null {
-  const parts = [d.detail?.sex?.value, d.detail?.taxon?.name].filter(Boolean);
+/**
+ * "female · Aedes aegypti" — only the heads that reported (specs.md §6). The sex token is mapped
+ * through the lookup (the taxon name is a proper noun and is not); the collapsed row and the
+ * expanded readout must not print it in two different languages.
+ */
+function detailInline(d: Detection, c: Copy): string | null {
+  const parts = [
+    d.detail?.sex?.value ? c.result.sexValue(d.detail.sex.value) : undefined,
+    d.detail?.taxon?.name,
+  ].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
@@ -48,20 +60,31 @@ type ReadoutRow = { label: string; value: string; suffix?: string };
  * What the collapsed row does NOT already say. Confidence is deliberately absent: the collapsed row
  * shows it at the same size in the same font, and repeating it made the expansion read as padding.
  */
-function readoutRows(d: Detection): ReadoutRow[] {
+function readoutRows(d: Detection, c: Copy): ReadoutRow[] {
   const rows: ReadoutRow[] = [];
   if (d.detail?.taxon?.name && typeof d.detail.taxon.confidence === 'number')
-    rows.push({ label: 'Species', value: d.detail.taxon.name, suffix: `· ${score(d.detail.taxon.confidence)}` });
+    rows.push({
+      label: c.history.species,
+      value: d.detail.taxon.name,
+      suffix: `· ${score(d.detail.taxon.confidence)}`,
+    });
   if (d.detail?.sex?.value && typeof d.detail.sex.confidence === 'number')
-    rows.push({ label: 'Sex', value: d.detail.sex.value, suffix: `· ${score(d.detail.sex.confidence)}` });
+    rows.push({
+      label: c.history.sex,
+      value: c.result.sexValue(d.detail.sex.value),
+      suffix: `· ${score(d.detail.sex.confidence)}`,
+    });
   if (d.detail?.gravid && typeof d.detail.gravid.confidence === 'number')
     rows.push({
-      label: 'Gravid',
-      value: d.detail.gravid.value ? 'yes' : 'no',
+      label: c.history.gravid,
+      value: d.detail.gravid.value ? c.common.yes : c.common.no,
       suffix: `· ${score(d.detail.gravid.confidence)}`,
     });
-  rows.push({ label: 'Recorded', value: fullStamp(d.at) });
-  rows.push({ label: 'Sync', value: d.synced ? 'synced' : 'queued offline' });
+  rows.push({ label: c.history.recordedRow, value: fullStamp(d.at, c) });
+  rows.push({
+    label: c.history.sync,
+    value: d.synced ? c.history.synced : c.history.queuedOffline,
+  });
   return rows;
 }
 
@@ -83,9 +106,10 @@ function Row({
   onPress: () => void;
   reducedMotion: boolean;
 }) {
+  const c = useCopy();
   const aedes = detection.species === 'aedes';
-  const inline = detailInline(detection);
-  const rows = readoutRows(detection);
+  const inline = detailInline(detection, c);
+  const rows = readoutRows(detection, c);
   const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   return (
@@ -101,19 +125,23 @@ function Row({
             {/* the one red allowed outside the drench: the vector's mark in the log */}
             {aedes && <View className="mr-2 h-2 w-2 rounded-full bg-alert" />}
             <Text className="font-plex-medium text-[16px] text-ink">
-              {aedes ? 'Aedes' : 'Not Aedes'}
+              {aedes ? c.history.aedes : c.history.notAedes}
             </Text>
             {!detection.synced && (
               <View className="ml-2 rounded-pill bg-surface-raised px-2 py-1">
-                <Text className="font-mono text-[12px] text-caution">queued</Text>
+                <Text className="font-mono text-[12px] text-caution">{c.history.queued}</Text>
               </View>
             )}
           </View>
           {inline && <Text className="mt-1 font-plex text-[13px] text-muted">{inline}</Text>}
         </View>
         <View className="items-end">
-          <Text className="font-mono-medium text-[17px] text-ink">{score(detection.confidence)}</Text>
-          <Text className="mt-1 font-mono text-[12px] text-muted">{timeLabel(detection.at)}</Text>
+          <Text className="font-mono-medium text-[17px] text-ink">
+            {score(detection.confidence)}
+          </Text>
+          <Text className="mt-1 font-mono text-[12px] text-muted">
+            {timeLabel(detection.at, c)}
+          </Text>
         </View>
       </Pressable>
 
@@ -145,6 +173,7 @@ function Row({
 }
 
 export default function History() {
+  const c = useCopy();
   const detections = useDetections();
   const reducedMotion = useReducedMotion();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -162,14 +191,16 @@ export default function History() {
           <Pressable
             onPress={backToCapture}
             accessibilityRole="button"
-            accessibilityLabel="Back to capture"
+            accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← History</Text>
+            <Text className="font-plex-medium text-[15px] text-muted">← {c.history.back}</Text>
           </Pressable>
           <View className="flex-row items-center gap-2">
             <SyncChip />
-            <Text className="font-mono text-[12px] text-muted">{ordered.length} recorded</Text>
+            <Text className="font-mono text-[12px] text-muted">
+              {c.history.recorded(ordered.length)}
+            </Text>
           </View>
         </View>
 
@@ -177,10 +208,10 @@ export default function History() {
           // Empty log teaches what the log is for — a beginning, not a failure state.
           <View className="flex-1 items-center justify-center pb-16">
             <Text className="text-center font-plex-semibold text-[20px] leading-7 text-ink">
-              Your detections build{'\n'}your district&apos;s map.
+              {c.history.emptyHeadline}
             </Text>
             <Text className="mt-3 text-center font-plex text-[16px] leading-6 text-muted">
-              The first one starts the moment{'\n'}a mosquito finds you.
+              {c.history.emptyBody}
             </Text>
             <Pressable
               onPress={backToCapture}
@@ -188,7 +219,7 @@ export default function History() {
               className="mt-8 min-h-[44px] items-center justify-center rounded-pill bg-surface px-6 py-3 active:opacity-70"
             >
               <Text className="font-plex-medium text-[15px] text-primary">
-                Identify the mosquito that found you
+                {c.history.emptyCta}
               </Text>
             </Pressable>
           </View>
@@ -209,6 +240,13 @@ export default function History() {
             </View>
           </ScrollView>
         )}
+
+        {/* The settings-adjacent spot. History is the citizen's own-data screen, so the preference
+            that governs the whole app lives at its foot — outside the ScrollView, so it is present
+            in the empty state as well as under a full log, and never scrolls away. */}
+        <View className="mb-4 flex-row items-center justify-between border-t border-line pt-3">
+          <LanguageToggle withLabel />
+        </View>
       </View>
     </SafeAreaView>
   );

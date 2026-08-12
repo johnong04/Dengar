@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Block, FigureTag, RoadmapScreen, SimulatedTag } from '@/components/RoadmapChrome';
+import { useCopy } from '@/copy';
 import { CLIP_SIZE, UPDATE_SIZE } from '@/lib/impact';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import tokens from '../../../tailwind.tokens.js';
@@ -33,9 +34,9 @@ import tokens from '../../../tailwind.tokens.js';
 
 /** Rounds are seeded (COMMON rule 8) — timestamps only, no invented counts or accuracies. */
 const LOG = [
-  { at: '11 Aug 2026 · 03:14', kind: 'model update only' },
-  { at: '08 Aug 2026 · 03:07', kind: 'model update only' },
-  { at: '05 Aug 2026 · 03:11', kind: 'model update only' },
+  { at: '11 Aug 2026 · 03:14' },
+  { at: '08 Aug 2026 · 03:07' },
+  { at: '05 Aug 2026 · 03:11' },
 ];
 
 /**
@@ -109,49 +110,48 @@ function PayloadRow({
 }
 
 export default function RoadmapPrivacy() {
+  const c = useCopy();
   const reducedMotion = useReducedMotion();
 
   return (
     <RoadmapScreen
-      title="Privacy"
+      title={c.roadmap.privacyLabel}
       self="privacy"
-      headline={'Your audio never\nleft this device.'}
-      standing="Not built yet. This is the architecture the offline capture already implies — written out, so you can check it rather than trust it."
+      headline={c.roadmap.privacyHeadline}
+      standing={c.roadmap.privacyStanding}
     >
-      <Block heading="what moves">
+      <Block heading={c.roadmap.whatMoves}>
         <PayloadRow
-          direction="stays here"
-          what="The 5.0 s recording. Held long enough to read the wingbeat, then dropped."
+          direction={c.roadmap.staysHere}
+          what={c.roadmap.clipWhat}
           size={CLIP_SIZE.value}
           arithmetic={CLIP_SIZE.arithmetic}
         />
         <View className="h-px bg-line" />
         <PayloadRow
-          direction="would leave"
-          what="A model update — one number per model weight. No audio, no transcript, no fragment of one."
+          direction={c.roadmap.wouldLeave}
+          what={c.roadmap.updateWhat}
           size={UPDATE_SIZE.value}
           arithmetic={UPDATE_SIZE.arithmetic}
         />
         <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">
-          Every update is the same size, because it is the same shape as the model. A payload that
-          grew with what you recorded would be carrying something about it.
+          {c.roadmap.sameSize}
         </Text>
       </Block>
 
-      <Block heading="on-device training" tint="trust">
+      <Block heading={c.roadmap.onDeviceTraining} tint="trust">
         <View className="flex-row items-center gap-2 py-1">
           <TrainingDot still={reducedMotion} />
           <Text className="font-mono text-[13px] text-tint-trust-ink">
-            waiting · runs while charging
+            {c.roadmap.trainingWaiting}
           </Text>
         </View>
         <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">
-          The phone would train on its own recordings overnight and send only what it learned. The
-          recordings stay where they were made.
+          {c.roadmap.trainingBody}
         </Text>
       </Block>
 
-      <Block heading="encrypted update log" tag={<SimulatedTag />}>
+      <Block heading={c.roadmap.updateLog} tag={<SimulatedTag />}>
         {LOG.map((row, i) => (
           <View
             key={row.at}
@@ -161,14 +161,14 @@ export default function RoadmapPrivacy() {
           >
             <View className="shrink pr-4">
               <Text className="font-mono text-[13px] text-ink">{row.at}</Text>
-              <Text className="mt-1 font-plex text-[15px] text-muted">sent: {row.kind}</Text>
+              <Text className="mt-1 font-plex text-[15px] text-muted">
+                {c.roadmap.sent(c.roadmap.modelUpdateOnly)}
+              </Text>
             </View>
             <Text className="font-mono text-[15px] text-muted">{UPDATE_SIZE.value}</Text>
           </View>
         ))}
-        <Text className="mt-2 font-mono text-[12px] text-muted">
-          three seeded rounds · no round has run
-        </Text>
+        <Text className="mt-2 font-mono text-[12px] text-muted">{c.roadmap.seededRounds}</Text>
       </Block>
     </RoadmapScreen>
   );

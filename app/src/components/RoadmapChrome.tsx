@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Copy, useCopy } from '@/copy';
 import type { Figure } from '@/lib/impact';
 
 /**
@@ -20,18 +21,20 @@ import type { Figure } from '@/lib/impact';
 
 /** The quiet marker. Same shape as the `simulated` pill the node and officer screens already use. */
 export function RoadmapMark() {
+  const c = useCopy();
   return (
     <View className="rounded-pill bg-surface px-3 py-1">
-      <Text className="font-mono text-[12px] text-muted">roadmap</Text>
+      <Text className="font-mono text-[12px] text-muted">{c.roadmap.mark}</Text>
     </View>
   );
 }
 
 /** Block-level disclosure that the content below is seeded, not measured (COMMON rule 8). */
 export function SimulatedTag() {
+  const c = useCopy();
   return (
     <View className="rounded-pill bg-surface-raised px-2 py-1">
-      <Text className="font-mono text-[12px] text-muted">simulated</Text>
+      <Text className="font-mono text-[12px] text-muted">{c.common.simulated}</Text>
     </View>
   );
 }
@@ -77,10 +80,17 @@ type ScreenProps = {
 };
 
 const SIBLINGS = {
-  privacy: { href: '/roadmap/privacy', label: 'Privacy' },
-  detail: { href: '/roadmap/detail', label: 'Fine-grained' },
-  impact: { href: '/roadmap/impact', label: 'Impact' },
+  privacy: { href: '/roadmap/privacy' },
+  detail: { href: '/roadmap/detail' },
+  impact: { href: '/roadmap/impact' },
 } as const;
+
+const siblingLabel = (c: Copy, k: keyof typeof SIBLINGS) =>
+  k === 'privacy'
+    ? c.roadmap.privacyLabel
+    : k === 'detail'
+      ? c.roadmap.detailLabel
+      : c.roadmap.impactLabel;
 
 const ORDER = ['privacy', 'detail', 'impact'] as const;
 
@@ -90,6 +100,7 @@ function back() {
 }
 
 export function RoadmapScreen({ title, headline, standing, self, children }: ScreenProps) {
+  const c = useCopy();
   const others = ORDER.filter((k) => k !== self);
 
   return (
@@ -99,7 +110,7 @@ export function RoadmapScreen({ title, headline, standing, self, children }: Scr
           <Pressable
             onPress={back}
             accessibilityRole="button"
-            accessibilityLabel={`Back from ${title}`}
+            accessibilityLabel={c.roadmap.backFrom(title)}
             className="min-h-[44px] shrink justify-center pr-6 active:opacity-70"
           >
             <Text className="font-plex-medium text-[15px] text-muted">← {title}</Text>
@@ -126,7 +137,7 @@ export function RoadmapScreen({ title, headline, standing, self, children }: Scr
                   className="min-h-[44px] flex-1 items-center justify-center rounded-pill bg-surface px-4 py-3 active:opacity-70"
                 >
                   <Text className="font-plex-medium text-[15px] text-primary">
-                    {SIBLINGS[k].label}
+                    {siblingLabel(c, k)}
                   </Text>
                 </Pressable>
               </Link>

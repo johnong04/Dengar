@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useCopy } from '@/copy';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import tokens from '../../../tailwind.tokens.js';
 
@@ -114,6 +115,7 @@ function clock(seconds: number): string {
 }
 
 export default function NodeRunning() {
+  const c = useCopy();
   const [elapsed, setElapsed] = useState(0);
   const [detections, setDetections] = useState(0);
   const reducedMotion = useReducedMotion();
@@ -130,19 +132,16 @@ export default function NodeRunning() {
     return () => clearInterval(id);
   }, []);
 
-  const battery = Math.max(
-    0,
-    BATTERY_START - Math.floor(elapsed / 60 / BATTERY_MINUTES_PER_POINT),
-  );
+  const battery = Math.max(0, BATTERY_START - Math.floor(elapsed / 60 / BATTERY_MINUTES_PER_POINT));
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
       <View className="flex-1 px-5">
         {/* status row — app mark, and the honest disclosure that the count is seeded */}
         <View className="mt-4 h-8 flex-row items-center justify-between">
-          <Text className="font-plex-semibold text-[17px] text-ink">Dengar</Text>
+          <Text className="font-plex-semibold text-[17px] text-ink">{c.common.brand}</Text>
           <View className="rounded-pill bg-surface px-3 py-1">
-            <Text className="font-mono text-[12px] text-muted">simulated · demo speed</Text>
+            <Text className="font-mono text-[12px] text-muted">{c.node.demoSpeed}</Text>
           </View>
         </View>
 
@@ -150,9 +149,7 @@ export default function NodeRunning() {
           {/* listening state, on the trust tint — the same chip the capture screen uses */}
           <View className="mb-8 flex-row items-center gap-2 rounded-pill bg-tint-trust px-4 py-2">
             <View className="h-2 w-2 rounded-full bg-ok-bright" />
-            <Text className="font-mono text-[13px] text-tint-trust-ink">
-              node listening · on-device
-            </Text>
+            <Text className="font-mono text-[13px] text-tint-trust-ink">{c.node.listening}</Text>
           </View>
 
           <ListeningHalo still={reducedMotion}>
@@ -160,7 +157,7 @@ export default function NodeRunning() {
               {detections}
             </Text>
             <Text className="mt-1 font-plex-medium text-[15px] text-muted">
-              {detections === 1 ? 'detection' : 'detections'}
+              {detections === 1 ? c.node.detection : c.node.detections}
             </Text>
           </ListeningHalo>
         </View>
@@ -169,7 +166,7 @@ export default function NodeRunning() {
             above (capture's pattern), the headline, the readouts and the stop action read as one
             grouped base instead of straddling a dead gap. */}
         <Text className="mb-6 text-center font-plex-bold text-[30px] leading-9 text-ink">
-          Leave this phone here
+          {c.node.leaveHere}
         </Text>
 
         {/* the two glanceable readouts — one filled block, hairline divider inside it */}
@@ -178,12 +175,12 @@ export default function NodeRunning() {
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">
               {clock(elapsed)}
             </Text>
-            <Text className="mt-1 font-mono text-[13px] text-muted">elapsed</Text>
+            <Text className="mt-1 font-mono text-[13px] text-muted">{c.node.elapsed}</Text>
           </View>
           <View className="w-px bg-line" />
           <View className="flex-1 items-center">
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">{battery}%</Text>
-            <Text className="mt-1 font-mono text-[13px] text-muted">battery</Text>
+            <Text className="mt-1 font-mono text-[13px] text-muted">{c.node.battery}</Text>
           </View>
         </View>
 
@@ -194,7 +191,7 @@ export default function NodeRunning() {
           accessibilityRole="button"
           className="mb-4 min-h-[60px] items-center justify-center rounded-pill bg-surface-raised py-4 active:opacity-90"
         >
-          <Text className="font-plex-semibold text-[20px] text-ink">Stop the node</Text>
+          <Text className="font-plex-semibold text-[20px] text-ink">{c.node.stop}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

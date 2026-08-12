@@ -4,11 +4,13 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { type Copy, useCopy } from '@/copy';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { markOnboarded } from '@/store/onboarding';
 
 type Beat = {
-  /** Mono eyebrow above the heading. Deliberately NOT on every beat — see BEATS. */
+  /** Mono eyebrow above the heading. Deliberately NOT on every beat — see beatsOf. */
   kicker?: string;
   heading: string;
   paragraphs: string[];
@@ -26,39 +28,36 @@ type Beat = {
  * loosens and the device stops meaning anything. Beat 1 opens with one because it is the frame
  * for everything after; beat 3 turns its kicker into the tag on a trust block, which is where the
  * word "privacy" does actual work; beats 2 and 4 carry themselves on the heading alone.
+ *
+ * Built from the copy lookup rather than held as a module constant, so switching language rebuilds
+ * the beats on the next render instead of stranding this screen in the language it mounted in.
  */
-const BEATS: Beat[] = [
-  {
-    kicker: 'why dengar exists',
-    heading: 'Fogging arrives two\nto three weeks late',
-    paragraphs: [
-      'Case-triggered fogging chases reports of people already sick — the vector moved in weeks before. But the mosquito announces itself first, in the whine you already know.',
-    ],
-    line: 'Dengue is heard before it’s felt.',
-  },
-  {
-    heading: 'Wingbeats are\nspecies-specific',
-    paragraphs: [
-      'Every mosquito species beats its wings at its own frequency — a signature your phone’s microphone can read.',
-      'Hold your phone within 10 cm — a hand’s width. That sounds close, but Aedes hunts humans: the mosquito that found you is already in range. Five seconds, judged on the phone.',
-    ],
-  },
-  {
-    heading: 'Analyzed here,\nnever uploaded',
-    trustTag: 'privacy',
-    paragraphs: [
-      'The recording is judged on your phone and never leaves it. When Dengar can’t make a confident call, the clip is deleted. Everything works in airplane mode.',
-    ],
-  },
-  {
-    heading: 'The microphone\nis the instrument',
-    paragraphs: [
-      'Dengar records only when you press Listen — five seconds, judged on the phone. The microphone is how a wingbeat is read; without it the instrument is silent.',
-    ],
-  },
-];
+function beatsOf(c: Copy): Beat[] {
+  return [
+    {
+      kicker: c.onboarding.beat1Kicker,
+      heading: c.onboarding.beat1Heading,
+      paragraphs: [c.onboarding.beat1Body],
+      line: c.onboarding.beat1Line,
+    },
+    {
+      heading: c.onboarding.beat2Heading,
+      paragraphs: [c.onboarding.beat2BodyA, c.onboarding.beat2BodyB],
+    },
+    {
+      heading: c.onboarding.beat3Heading,
+      trustTag: c.common.privacy,
+      paragraphs: [c.onboarding.beat3Body],
+    },
+    {
+      heading: c.onboarding.beat4Heading,
+      paragraphs: [c.onboarding.beat4Body],
+    },
+  ];
+}
 
-const MIC_BEAT = BEATS.length - 1;
+const BEAT_COUNT = 4;
+const MIC_BEAT = BEAT_COUNT - 1;
 
 type MicState = 'idle' | 'requesting' | 'denied';
 
@@ -79,6 +78,8 @@ async function requestMicPermission(): Promise<boolean> {
 }
 
 export default function Onboarding() {
+  const c = useCopy();
+  const BEATS = beatsOf(c);
   const [beat, setBeat] = useState(0);
   const [mic, setMic] = useState<MicState>('idle');
   const reducedMotion = useReducedMotion();
@@ -108,14 +109,19 @@ export default function Onboarding() {
       <View className="flex-1 px-5">
         {/* top row */}
         <View className="flex-row items-center justify-between pt-4">
-          <Text className="font-plex-semibold text-[17px] text-ink">Dengar</Text>
-          <Pressable
-            onPress={finish}
-            accessibilityRole="button"
-            className="min-h-[44px] justify-center pl-6 active:opacity-70"
-          >
-            <Text className="font-plex-medium text-[15px] text-muted">Skip</Text>
-          </Pressable>
+          <Text className="font-plex-semibold text-[17px] text-ink">{c.common.brand}</Text>
+          {/* The toggle sits in the first thing anyone sees: a reader who cannot read this screen
+              must not have to finish it before they can change the language. */}
+          <View className="flex-row items-center gap-2">
+            <LanguageToggle />
+            <Pressable
+              onPress={finish}
+              accessibilityRole="button"
+              className="min-h-[44px] justify-center pl-4 active:opacity-70"
+            >
+              <Text className="font-plex-medium text-[15px] text-muted">{c.onboarding.skip}</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* beat content — key remounts the view so each step fades in */}
@@ -160,9 +166,7 @@ export default function Onboarding() {
             <Animated.View entering={enter}>
               <View className="mb-6 rounded-block bg-surface px-5 py-4">
                 <Text className="font-plex text-[16px] leading-6 text-ink">
-                  Microphone access was declined, so Dengar can{'’'}t read a wingbeat yet. You
-                  can enable it in Settings whenever you{'’'}re ready — the rest of the app
-                  works without it.
+                  {c.onboarding.denied}
                 </Text>
               </View>
             </Animated.View>
@@ -185,7 +189,9 @@ export default function Onboarding() {
                 accessibilityRole="button"
                 className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90"
               >
-                <Text className="font-plex-semibold text-[17px] text-bg">Continue</Text>
+                <Text className="font-plex-semibold text-[17px] text-bg">
+                  {c.onboarding.continue}
+                </Text>
               </Pressable>
             )}
 
@@ -196,7 +202,9 @@ export default function Onboarding() {
                 accessibilityRole="button"
                 className="min-h-[52px] items-center justify-center rounded-pill bg-primary py-4 active:opacity-90 disabled:opacity-60"
               >
-                <Text className="font-plex-semibold text-[17px] text-bg">Allow microphone</Text>
+                <Text className="font-plex-semibold text-[17px] text-bg">
+                  {c.onboarding.allowMic}
+                </Text>
               </Pressable>
             )}
 
@@ -206,7 +214,9 @@ export default function Onboarding() {
                 accessibilityRole="button"
                 className="min-h-[52px] items-center justify-center rounded-pill bg-surface-raised active:opacity-90"
               >
-                <Text className="font-plex-semibold text-[17px] text-ink">Continue anyway</Text>
+                <Text className="font-plex-semibold text-[17px] text-ink">
+                  {c.onboarding.continueAnyway}
+                </Text>
               </Pressable>
             )}
 
@@ -219,7 +229,7 @@ export default function Onboarding() {
                 accessibilityRole="button"
                 className="min-h-[44px] items-center justify-center py-2 active:opacity-70"
               >
-                <Text className="font-plex-medium text-[15px] text-muted">Back</Text>
+                <Text className="font-plex-medium text-[15px] text-muted">{c.onboarding.back}</Text>
               </Pressable>
             )}
           </View>

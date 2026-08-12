@@ -19,6 +19,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
+import type { Copy } from '@/copy';
 import { activeCluster, district, watchAreas, type WatchArea } from '@/data/district';
 
 /**
@@ -90,11 +91,17 @@ export function useAcknowledgement(): Acknowledgement | null {
 /** Row state — the three the officer feed distinguishes. */
 export type DirectiveState = 'directive' | 'acknowledged' | 'watch';
 
-export const STATE_LABEL: Record<DirectiveState, string> = {
-  directive: 'directive issued',
-  acknowledged: 'acknowledged',
-  watch: 'watch',
-};
+/**
+ * The row label for a state. The words live in `src/copy/` (slice 18) — this module owns the state
+ * machine, not its vocabulary, so the officer feed reads the label out of the lookup instead.
+ */
+export function stateLabel(state: DirectiveState, c: Copy): string {
+  return state === 'directive'
+    ? c.officer.stateDirective
+    : state === 'acknowledged'
+      ? c.officer.stateAcknowledged
+      : c.officer.stateWatch;
+}
 
 export type AlertRow = {
   area: WatchArea;
