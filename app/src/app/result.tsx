@@ -14,6 +14,7 @@ import {
   type SpeciesDetail,
 } from '@/inference/gating';
 import { DRENCH_STOPS } from '@/lib/drench';
+import { formatFix, useCoarseLocation } from '@/lib/coarseLocation';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { add as addDetection } from '@/store/detections';
 
@@ -527,8 +528,19 @@ export default function Result() {
     detail?: string;
   }>();
   const reducedMotion = useReducedMotion();
-  const stamp = useCaptureStamp();
+  const captureStamp = useCaptureStamp();
   const c = useCopy();
+  /**
+   * specs §5 v1 asks the result for a COARSE location, and it was the one v1 item never built.
+   * Real browser geolocation, rounded to ~111 m in `lib/coarseLocation.ts` before it reaches
+   * state — so the demo shows a true fix at exactly the block precision `/area` promises.
+   * Denied, unavailable or still resolving: the stamp simply stays as it was. No placeholder
+   * coordinate is ever printed, because a fabricated position on a surveillance screen is the
+   * class of figure that disqualifies the submission.
+   */
+  const fix = useCoarseLocation();
+  const stamp =
+    fix.state === 'ok' ? `${captureStamp} · ${formatFix(fix.lat, fix.lon)}` : captureStamp;
 
   // A detected verdict must name a species the instrument can stand behind. A garbled species
   // param (hand-typed URL) falls through to the no_mosquito abstain with honest dashes — the
