@@ -55,7 +55,7 @@ export const en = {
     headline: 'Identify the mosquito\nthat found you',
     cancel: 'Cancel',
     guidance: 'Hold your phone within 10 cm.\nTrapped under a glass works best.',
-    guidanceSpec: '16 kHz · mono · band-SNR gate armed',
+    guidanceSpec: 'within 10 cm · 5 s · judged on this phone',
     history: 'History',
     area: 'Area',
     tally: (week: number) => `${week} this week`,

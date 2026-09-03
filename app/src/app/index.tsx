@@ -196,9 +196,19 @@ export default function Capture() {
 
           {phase === 'idle' && (
             <Animated.View entering={enter} className="items-center">
-              <Text className="mt-8 text-center font-plex-bold text-[30px] leading-9 text-ink">
+              {/* The one line under the instrument. Was 30px bold above a ~90px void and a
+                  separate paragraph block — the centred-hero-plus-subtitle shape the research
+                  names as an AI tell, and the void was the screen's worst feature at 390. */}
+              <Text className="mt-7 text-center font-plex-semibold text-[21px] leading-7 text-ink">
                 {c.capture.headline}
               </Text>
+              <Text className="mt-2 text-center font-mono text-[12px] text-muted">
+                {c.capture.guidanceSpec}
+              </Text>
+              {/* The tally belongs to the instrument, not to the foot. Pinned at the bottom it left
+                  a ~130px void between the spec line and itself; here the screen reads as one
+                  centred group with the shell framing it. */}
+              <Text className="mt-5 text-center font-mono text-[13px] text-muted">{tally}</Text>
             </Animated.View>
           )}
           {listening && (
@@ -212,22 +222,6 @@ export default function Capture() {
               </Pressable>
             </Animated.View>
           )}
-        </View>
-
-        {/* guidance — the instruction and the machine spec it runs at, one block, warm light */}
-        <View className="mb-4 items-center rounded-block bg-tint-guide px-5 py-4">
-          <Text className="text-center font-plex text-[16px] leading-6 text-tint-guide-ink">
-            {c.capture.guidance}
-          </Text>
-          <Text className="mt-3 font-mono text-[12px] text-tint-guide-mono">
-            {c.capture.guidanceSpec}
-          </Text>
-        </View>
-
-        {/* The week's tally, alone. History and Area moved into the tab bar — a footer row of
-            links duplicating the shell is the clutter the shell exists to remove. */}
-        <View className="mb-4 flex-row items-center justify-center">
-          <Text className="font-mono text-[13px] text-muted">{tally}</Text>
         </View>
 
         {/* static-node mode (specs §2's secondary capture) — one quiet line, never a second CTA */}
