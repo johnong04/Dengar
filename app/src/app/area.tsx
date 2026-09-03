@@ -177,6 +177,32 @@ export default function Area() {
     { lat: outline.south, lon: outline.east },
   );
 
+  /**
+   * Density circles, one per block that actually holds a detection. Diameter goes as
+   * sqrt(count/peak) so the eye — which compares AREA, not width — reads the proportion correctly.
+   *
+   * The floor is deliberately larger than a block is wide: a circle that fits inside its block
+   * could be mistaken for a precise footprint, and the whole privacy claim on this screen is that
+   * nothing finer than a block is ever drawn. Oversizing keeps it honestly coarse.
+   */
+  const density = clusterBlocks
+    .map((b, i) => ({ b, count: counts[i] }))
+    .filter(({ count }) => count > 0)
+    .map(({ b, count }) => {
+      const r = box(b.nw, b.se);
+      const base = Math.max(r.width, r.height) * 0.9;
+      return {
+        id: b.id,
+        cx: r.left + r.width / 2,
+        cy: r.top + r.height / 2,
+        r: (base * (0.46 + 0.3 * Math.sqrt(count / peak))) / 2,
+        opacity: 0.16 + 0.14 * (count / peak),
+      };
+    });
+  // No neighbourhood ring: at this framing its radius runs past the panel and clips, which reads
+  // as a broken box — the same defect slice 16 fixed for the rectangle. The panel IS the
+  // neighbourhood; the card above names it. A ring would only restate that, badly.
+
   return (
     <SafeAreaView className="flex-1 bg-bg">
       {/* header — same grammar as the rest of the citizen surface: one back affordance, one title,
@@ -266,43 +292,31 @@ export default function Area() {
                   }}
                 />
 
-                {/* the user's neighbourhood, as one soft outline — the citizen equivalent of the
-                    officer's ring, with none of its urgency */}
-                <View
-                  className="border border-primary"
-                  style={{
-                    position: 'absolute',
-                    left: home.left - 10,
-                    top: home.top - 10,
-                    width: home.width + 20,
-                    height: home.height + 20,
-                    borderRadius: 20,
-                    opacity: 0.55,
-                    pointerEvents: 'none',
-                  }}
-                />
+                {/* Coarse density as graduated circles, never as filled rectangles.
+                    Rectangles were the citizen half of the same defect as the officer map: a block
+                    box painted amber is a drawn shape, and three of them read as parcels on fire.
+                    A circle whose AREA carries the count is the standard cartographic answer and
+                    needs no library — diameter goes as sqrt(count/peak), because the eye compares
+                    area (docs/design/research-2026-mobile.md §4).
 
-                {/* coarse density. Soft filled patches at `chip` radius, no borders and no labels:
-                    a survey grid drawn crisply is an officer artefact, and a citizen reading a
-                    grid starts counting cells instead of reading a level. */}
-                {clusterBlocks.map((b, i) =>
-                  counts[i] === 0 ? null : (
-                    <View
-                      key={b.id}
-                      className="rounded-chip bg-caution"
-                      /* Deliberately quiet: the first pass ran 0.18→0.60 and the blocks painted as
-                         three solid amber slabs that read as burning parcels — a citizen screen
-                         shouting at the one person who cannot dispatch a truck. The level is the
-                         WORD above the map; the shading only says roughly where. */
-                      style={{
-                        position: 'absolute',
-                        ...box(b.nw, b.se),
-                        opacity: 0.12 + 0.22 * (counts[i] / peak),
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  ),
-                )}
+                    Still deliberately quiet, and still block-COARSE: the circle is centred on the
+                    block and sized well past it, so it can never be read as a street or a house.
+                    The level is the WORD above the map; this only says roughly where. */}
+                {density.map((d) => (
+                  <View
+                    key={d.id}
+                    className="rounded-full bg-caution"
+                    style={{
+                      position: 'absolute',
+                      left: d.cx - d.r,
+                      top: d.cy - d.r,
+                      width: d.r * 2,
+                      height: d.r * 2,
+                      opacity: d.opacity,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                ))}
               </>
             ) : null}
           </View>
