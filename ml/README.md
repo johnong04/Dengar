@@ -15,11 +15,10 @@ Nothing runs on the laptop. The dataset (4 GB) never touches it.
 
 Paste the label inventory and the per-class window counts back.
 
-## Cell 2 — the overnight run (~4-5 h, unattended)
+## Cell 2 — the overnight run (hard-capped at 3.5 h of training)
 
-54 training runs across a config grid, each task's winner picked **on validation**, then the
-top 5 averaged into an ensemble, then exported. Checkpoints after every single run, so a
-recycled runtime costs one run rather than the night — re-running the identical cell resumes.
+A config grid, each task's winner picked **on validation**, then the top 5 averaged into an
+ensemble, then exported. Everything durable lands in Drive.
 
 `msc` is listed first deliberately: if the night is cut short, the product model is the one
 that finished.
@@ -34,25 +33,39 @@ from google.colab import drive; drive.mount('/content/drive')
 SW=/content/drive/MyDrive/dengar/sweep
 
 !python dengar.py sweep --task msc,med,tri --seeds 3 --widths 0.75,1.0,1.5 \
-    --both-aug --epochs 80 --out $SW 2>&1 | tee /content/sweep_log.txt
+    --both-aug --epochs 80 --max-hours 3.5 --out $SW 2>&1 | tee $SW/sweep_log.txt
 
-# export the single-model winners FIRST, so there is always something shippable
-!python dengar.py export 2>&1 | tee -a /content/sweep_log.txt
+# single-model winners are exported and copied to Drive FIRST, so something is
+# always shippable before anything risky is attempted
+!python dengar.py export 2>&1 | tee -a $SW/sweep_log.txt
 !cp -r out/*.tflite out/band_snr.json /content/drive/MyDrive/dengar/ || true
 
-# then try to beat them with an ensemble; failure here cannot cost the night
-!python dengar.py ensemble --task msc,med,tri --top-k 5 --out $SW 2>&1 | tee -a /content/sweep_log.txt || true
-!python dengar.py export 2>&1 | tee -a /content/sweep_log.txt || true
+# then try to beat them; a failure here cannot cost the night
+!python dengar.py ensemble --task msc,med,tri --top-k 5 --out $SW 2>&1 | tee -a $SW/sweep_log.txt || true
+!python dengar.py export 2>&1 | tee -a $SW/sweep_log.txt || true
 
-!cp -r out/*.tflite out/band_snr.json out/ensemble.json out/tfjs_* /content/drive/MyDrive/dengar/ || true
-!cd out && zip -qr /content/dengar_models.zip *.tflite *.json tfjs_* && du -h /content/dengar_models.zip
+!cp -r out/*.tflite out/*.json out/tfjs_* /content/drive/MyDrive/dengar/ || true
+!cd out && zip -qr /content/drive/MyDrive/dengar/dengar_models.zip *.tflite *.json tfjs_*
+!sync; ls -la /content/drive/MyDrive/dengar/
 !cat out/ensemble.json
 ```
 
 **Leave the browser tab open.** A closed tab means a killed runtime.
 
-Grid: 3 widths x specaug on/off x 3 seeds = 18 runs per task. Roughly 3.5-4 h of T4 plus the
-~30 min Zenodo download.
+Grid: 3 widths x specaug on/off x 3 seeds = 18 runs per task, ~3.5 h of T4 plus the ~30 min
+Zenodo download. `--max-hours 3.5` is a **hard wall**: once it passes, no new run starts and
+control moves straight to export and ensemble. A sweep still running when the operator's
+window closes is worth nothing.
+
+### Everything durable goes to Drive, not to the VM
+
+`/content` is the VM's own disk and is **destroyed** when the runtime is recycled — which
+happens roughly 90 minutes after the last cell finishes, and has already happened twice on
+this project. `/content/drive/MyDrive/...` is Google Drive and survives.
+
+So the sweep writes every model and `sweep.json` straight to Drive as it goes, the log is
+`tee`d to Drive, and the final zip is written to Drive rather than downloaded. Nothing worth
+keeping is left on the VM.
 
 ### If it dies overnight
 

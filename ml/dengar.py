@@ -565,7 +565,10 @@ def cmd_sweep(a):
     a re-run skips what is already there, so a disconnect costs one run, not the
     night. Point --out at Drive.
     """
-    import shutil
+    import shutil, time
+    t0 = time.time()
+    budget = a.max_hours * 3600
+    stop = False
     out = a.out or f"{ROOT}/out"
     os.makedirs(out, exist_ok=True)
     os.makedirs(f"{ROOT}/out", exist_ok=True)
@@ -579,6 +582,12 @@ def cmd_sweep(a):
         for width in widths:
             for specaug in augs:
                 for seed in range(a.seeds):
+                    # Hard wall-clock budget. The operator has a fixed window and
+                    # a sweep still running when it closes is worth nothing —
+                    # stopping early still leaves export and ensemble time to run.
+                    if time.time() - t0 > budget:
+                        stop = True
+                        break
                     key = f"{task}|w{width}|a{int(specaug)}|s{seed}"
                     if key in done:
                         print(f"skip {key} (already done)", flush=True)
@@ -591,11 +600,22 @@ def cmd_sweep(a):
                     done[key] = {k: v for k, v in r.items()
                                  if k not in ("pred", "true")}
                     json.dump(done, open(sj, "w"), indent=2)   # after EVERY run
+                    print(f"    [{(time.time()-t0)/3600:.2f}h of "
+                          f"{a.max_hours}h budget used]", flush=True)
+                if stop:
+                    break
+            if stop:
+                break
+        if stop:
+            print(f"\n!!! time budget of {a.max_hours}h reached — stopping the "
+                  f"sweep here so export and ensemble still run", flush=True)
 
         # Winner chosen on VALIDATION. Choosing on test would reintroduce exactly
         # the selection bias this rewrite exists to remove.
         cand = {k: v for k, v in done.items() if k.startswith(task + "|")}
         if not cand:
+            if stop:
+                break
             continue
         best = max(cand, key=lambda k: cand[k]["val_macro_f1"])
         b = cand[best]
@@ -604,6 +624,8 @@ def cmd_sweep(a):
             shutil.copy(src, f"{ROOT}/out/{task}_cnn.keras")
         print(f"\n>>> {task} winner {best}: val {b['val_macro_f1']} "
               f"TEST {b['test_macro_f1']}  (of {len(cand)} runs)", flush=True)
+        if stop:
+            break
 
     print("\n===== LEADERBOARD (ranked by VAL; test shown, never selected on) =====")
     for k, v in sorted(done.items(), key=lambda kv: -kv[1]["val_macro_f1"]):
@@ -713,6 +735,7 @@ if __name__ == "__main__":
     w.add_argument("--both-aug", action="store_true")
     w.add_argument("--no-specaug", action="store_true")
     w.add_argument("--widths", default="1.0")
+    w.add_argument("--max-hours", type=float, default=4.0)
     w.add_argument("--out", default=None); w.set_defaults(f=cmd_sweep)
     e2 = sub.add_parser("ensemble"); e2.add_argument("--task", default="msc,med,tri")
     e2.add_argument("--top-k", type=int, default=3)
