@@ -69,24 +69,19 @@ export const en = {
     allowMic: 'Allow microphone',
     continueAnyway: 'Continue anyway',
     back: 'Back',
-    denied:
-      'Microphone access was declined, so Dengar can’t read a wingbeat yet. You can enable it in Settings whenever you’re ready — the rest of the app works without it.',
+    denied: 'No microphone, no wingbeat. Enable it in Settings when you’re ready.',
     beat1Kicker: 'why dengar exists',
     beat1Heading: 'Fogging arrives two\nto three weeks late',
     beat1Body:
-      'Case-triggered fogging chases reports of people already sick — the vector moved in weeks before. But the mosquito announces itself first, in the whine you already know.',
+      'Fogging follows sick people. The mosquito arrived weeks earlier — and announced itself.',
     beat1Line: 'Dengue is heard before it’s felt.',
     beat2Heading: 'Wingbeats are\nspecies-specific',
-    beat2BodyA:
-      'Every mosquito species beats its wings at its own frequency — a signature your phone’s microphone can read.',
-    beat2BodyB:
-      'Hold your phone within 10 cm — a hand’s width. That sounds close, but Aedes hunts humans: the mosquito that found you is already in range. Five seconds, judged on the phone.',
+    beat2BodyA: 'Each species beats its wings at its own frequency. Your phone can hear it.',
+    beat2BodyB: 'Within 10 cm — a hand’s width. Aedes hunts humans, so it is already that close.',
     beat3Heading: 'Analyzed here,\nnever uploaded',
-    beat3Body:
-      'The recording is judged on your phone and never leaves it. When Dengar can’t make a confident call, the clip is deleted. Everything works in airplane mode.',
+    beat3Body: 'Judged on your phone. Never uploaded. Works in airplane mode.',
     beat4Heading: 'The microphone\nis the instrument',
-    beat4Body:
-      'Dengar records only when you press Listen — five seconds, judged on the phone. The microphone is how a wingbeat is read; without it the instrument is silent.',
+    beat4Body: 'Dengar listens only when you press Listen. Five seconds, then nothing.',
   },
 
   result: {
@@ -114,15 +109,15 @@ export const en = {
     sexValue: (v: string) => v,
     noMosquitoHeadline: 'No mosquito\nin this recording',
     noMosquitoBody:
-      'The clip carried no wingbeat signature. Most recordings end here — a clean no is what keeps the map honest.',
+      'No wingbeat in the clip. Most recordings end here — that is what keeps the map honest.',
     noMosquitoGuidance: 'Get within 10 cm — under a glass is ideal',
     notConfidentHeadline: 'Wingbeat heard —\nspecies unresolved',
     notConfidentBody:
-      "A mosquito was close enough to hear, but the species call didn't clear its floor. This is the one worth retrying — inside 10 cm the signature sharpens fast.",
+      'Heard, but not clearly enough to name. Closer than 10 cm and the signature sharpens.',
     notConfidentGuidance: 'Get closer — hold within 10 cm — and listen again',
     tooNoisyHeadline: 'Too loud here\nto hear a wingbeat',
     tooNoisyBody:
-      'Background sound drowned the wingbeat band before the models could judge it. Refusing beats guessing — a wrong call here would put bad data on the map.',
+      'Background noise drowned the wingbeat. A wrong call would put bad data on the map.',
     tooNoisyGuidance: 'Move away from the fan, traffic or TV, then listen again',
     listenAgain: 'Listen again',
     done: 'Done',
@@ -168,16 +163,13 @@ export const en = {
   node: {
     kicker: 'static node · second capture mode',
     heading: 'Give an old phone\na second job',
-    body: 'Almost every house has a dead phone in a drawer. Plugged in beside a breeding site, it becomes a permanent listening post at no hardware cost.',
-    step1:
-      'Find the lure: standing water, or a dark container in the shade. Aedes comes to it on its own.',
-    step2:
-      'Lay the phone face-up a hand’s width above the water — 5 cm, the geometry the accuracy was measured at.',
+    body: 'A dead phone in a drawer, plugged in beside standing water, is a permanent listening post.',
+    step1: 'Find standing water, or a dark container in the shade. Aedes comes to it.',
+    step2: 'Face-up, 5 cm above the water — the geometry the accuracy was measured at.',
     step3: 'Leave it on the charger. Dusk through dawn is the strongest window.',
     placementSpec: '≈5 cm above the lure · mains power',
-    honest: 'A node hears what arrives at the spot you put it on — one place, not a room.',
-    privacyBody:
-      'Every clip is judged on this phone, then deleted. No audio is uploaded — only a count and a species, once you’re online.',
+    honest: 'A node hears one spot, not a room.',
+    privacyBody: 'Judged here, then deleted. Only a count and a species are ever sent.',
     start: 'Start the node',
     demoSpeed: 'simulated · demo speed',
     listening: 'node listening · on-device',
@@ -195,13 +187,12 @@ export const en = {
     riskRaised: 'Raised',
     riskWatch: 'Watch',
     riskLow: 'Low',
-    answer: (hours: number) =>
-      `Aedes was confirmed in your neighbourhood in the last ${hours} hours, by people who identified the mosquito that found them.`,
+    answer: (hours: number) => `Aedes confirmed in your neighbourhood in the last ${hours} hours.`,
     tally: (count: number, hours: number, rainMm: number) =>
       `${count} detections · ${hours} h · +${rainMm} mm rain`,
     shading: (hours: number) => `shaded by block · ${hours} h`,
     privacyBody: (metres: number) =>
-      `Detections are rounded to a block of about ${metres} m before anyone sees them — never to a street or a home.`,
+      `Rounded to a ${metres} m block before anyone sees it. Never a street, never a home.`,
     privacySpec: 'block level · no address, no dot on a house',
     actionsHeading: 'What actually helps',
     prevention1: 'Empty pot trays, pails and buckets.',
@@ -348,7 +339,7 @@ export const en = {
     band72: '72 h',
     rain: 'Rain',
     countHours: (count: number, hours: number) => `${count} / ${hours} h`,
-    noCluster: 'No cluster · monitoring',
+    noCluster: 'No cluster · watch',
     deltaOn72: (delta: string) => `${delta} on 72 h`,
     noDirective: ' · no fogging directive',
 
