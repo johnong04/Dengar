@@ -288,7 +288,7 @@ def spec_augment_layer():
     return _SPEC
 
 
-def build(n_classes, arch="cnn", specaug=True):
+def build(n_classes, arch="cnn", specaug=True, width=1.0):
     """arch='cnn'       — 380k params from scratch.
        arch='mobilenet' — ImageNet-pretrained MobileNetV2 on the spectrogram.
 
@@ -322,7 +322,7 @@ def build(n_classes, arch="cnn", specaug=True):
         x = base(x)
     else:
         for f in (16, 32, 64, 64):
-            x = L.Conv2D(f, 3, padding="same", use_bias=False)(x)
+            x = L.Conv2D(max(8, int(f * width)), 3, padding="same", use_bias=False)(x)
             x = L.BatchNormalization()(x)
             x = L.ReLU()(x)
             x = L.MaxPool2D(2)(x)
@@ -361,7 +361,10 @@ def split3(X, y, g, seed=0):
     from sklearn.model_selection import GroupShuffleSplit
     gss = lambda frac, rs: GroupShuffleSplit(n_splits=1, test_size=frac, random_state=rs)
     pool, te = next(gss(0.25, 0).split(X, y, g))
-    p2, v2 = next(gss(0.20, seed).split(X[pool], y[pool], g[pool]))
+    p2, v2 = next(gss(0.20, 1).split(X[pool], y[pool], g[pool]))
+    # Both splits are FIXED. `seed` varies weight init and augmentation noise only,
+    # which is what gives an ensemble its diversity — and it keeps every run's
+    # validation score comparable, so ranking and ensembling are meaningful.
     return pool[p2], pool[v2], te
 
 
@@ -377,7 +380,7 @@ def load_task(task):
     return X, y, g, noise
 
 
-def fit_one(task, arch, seed, epochs, specaug, X, y, g, noise, quiet=False):
+def fit_one(task, arch, seed, epochs, specaug, X, y, g, noise, quiet=False, width=1.0):
     """One training run. Returns (model, report dict) — test metrics included but
     never used to choose anything."""
     import tensorflow as tf
@@ -390,7 +393,7 @@ def fit_one(task, arch, seed, epochs, specaug, X, y, g, noise, quiet=False):
     cnt = collections.Counter(ytr.tolist())
     cw = {c: len(ytr) / (len(cnt) * n) for c, n in cnt.items()}
 
-    m = build(len(names), arch, specaug=specaug)
+    m = build(len(names), arch, specaug=specaug, width=width)
     steps = max(1, len(Xtr) // 32) * epochs
     # Cosine decay with warmup. The flat-LR runs oscillated hard — val accuracy
     # swinging 0.85 -> 0.32 -> 0.84 between adjacent epochs — so early stopping
@@ -412,6 +415,7 @@ def fit_one(task, arch, seed, epochs, specaug, X, y, g, noise, quiet=False):
     rt = classification_report(y[te], pt, target_names=names, digits=3,
                                zero_division=0, output_dict=True)
     return m, {"seed": seed, "arch": arch, "specaug": bool(specaug),
+               "width": width,
                "val_macro_f1": round(rv["macro avg"]["f1-score"], 4),
                "test_macro_f1": round(rt["macro avg"]["f1-score"], 4),
                "test_accuracy": round(rt["accuracy"], 4),
@@ -443,6 +447,117 @@ def cmd_train(a):
     json.dump(all_s, open(sf, "w"), indent=2)
 
 
+def mkey(task, r):
+    """Filename for one sweep run. Keyed by the full config, not just the seed."""
+    return f"{task}_w{r.get('width', 1.0)}_a{int(r['specaug'])}_s{r['seed']}"
+
+
+def best_threshold(prob_pos, ytrue):
+    """Operating point that maximises macro-F1, chosen ON VALIDATION only.
+
+    The app calls Aedes at >= 0.70 because specs.md picked a round number, not
+    because anything measured it. This says what the data would have picked.
+    """
+    from sklearn.metrics import f1_score
+    grid = np.arange(0.05, 0.96, 0.01)
+    scores = [f1_score(ytrue, (prob_pos >= t).astype(int) ^ 1, average="macro",
+                       zero_division=0) for t in grid]
+    i = int(np.argmax(scores))
+    return float(grid[i]), float(scores[i])
+
+
+def cmd_ensemble(a):
+    """Average the top-K models by VALIDATION score into one exportable graph.
+
+    The sweep already trains K models and keeps one. Averaging them is the most
+    reliable free gain available, because the runs differ only by initialisation
+    and augmentation noise, so their errors are partly independent.
+
+    K is fixed in advance and the ranking is by validation. Test is reported, and
+    never used to choose anything.
+    """
+    import tensorflow as tf
+    from keras import layers as L
+    from sklearn.metrics import f1_score, confusion_matrix, classification_report
+    log_layer(); spec_augment_layer()
+
+    out = a.out or f"{ROOT}/out"
+    done = json.load(open(f"{out}/sweep.json"))
+    summary = {}
+
+    for task in a.task.split(","):
+        names = TASKS[task][0]
+        cand = {k: v for k, v in done.items() if k.startswith(task + "|")
+                and os.path.exists(f"{out}/{mkey(task, v)}.keras")}
+        if not cand:
+            print(f"{task}: nothing to ensemble"); continue
+        top = sorted(cand, key=lambda k: -cand[k]["val_macro_f1"])[:a.top_k]
+        print(f"\n=== {task}: ensembling {len(top)} of {len(cand)} runs ===")
+        for k in top:
+            print(f"    {k}  val {cand[k]['val_macro_f1']}")
+
+        X, y, g, _ = load_task(task)
+        _, va, te = split3(X, y, g)
+
+        members = []
+        for i, k in enumerate(top):
+            m = tf.keras.models.load_model(f"{out}/{mkey(task, cand[k])}.keras",
+                                           safe_mode=False)
+            m.trainable = False
+            m._name = f"member{i}"
+            members.append(m)
+
+        inp = L.Input(shape=(NSAMP,), name="audio", dtype="float32")
+        outs = [m(inp) for m in members]
+        ens = tf.keras.Model(inp, L.Average(name="probs")(outs) if len(outs) > 1
+                             else outs[0])
+
+        pv = ens.predict(X[va], batch_size=64, verbose=0)
+        pt = ens.predict(X[te], batch_size=64, verbose=0)
+        ens_val = f1_score(y[va], pv.argmax(1), average="macro", zero_division=0)
+        ens_test = f1_score(y[te], pt.argmax(1), average="macro", zero_division=0)
+        best_single = cand[top[0]]
+        print(f"  single best : val {best_single['val_macro_f1']:.4f}  "
+              f"test {best_single['test_macro_f1']:.4f}")
+        print(f"  ENSEMBLE    : val {ens_val:.4f}  test {ens_test:.4f}")
+        print(confusion_matrix(y[te], pt.argmax(1)))
+        print(classification_report(y[te], pt.argmax(1), target_names=names,
+                                    digits=3, zero_division=0))
+
+        rec = {"members": top, "ensemble_val": round(ens_val, 4),
+               "ensemble_test": round(ens_test, 4),
+               "single_val": best_single["val_macro_f1"],
+               "single_test": best_single["test_macro_f1"]}
+
+        if len(names) == 2:
+            thr, thr_val = best_threshold(pv[:, 0], y[va])
+            pt_thr = ((pt[:, 0] >= thr).astype(int) ^ 1)
+            rec["tuned_threshold"] = round(thr, 3)
+            rec["tuned_val_macro_f1"] = round(thr_val, 4)
+            rec["tuned_test_macro_f1"] = round(
+                f1_score(y[te], pt_thr, average="macro", zero_division=0), 4)
+            print(f"  threshold chosen on val: {thr:.2f} "
+                  f"(app currently uses 0.70) -> test {rec['tuned_test_macro_f1']:.4f}")
+
+        # Only replace the shipped model if the ensemble wins ON VALIDATION.
+        if ens_val > best_single["val_macro_f1"]:
+            ens.save(f"{ROOT}/out/{task}_cnn.keras")
+            print(f"  >>> ensemble wins on val — it is now {task}'s shipped model")
+            rec["shipped"] = "ensemble"
+        else:
+            print(f"  >>> single model kept")
+            rec["shipped"] = "single"
+        summary[task] = rec
+
+    os.makedirs(f"{ROOT}/out", exist_ok=True)
+    json.dump(summary, open(f"{ROOT}/out/ensemble.json", "w"), indent=2)
+    try:
+        json.dump(summary, open(f"{out}/ensemble.json", "w"), indent=2)
+    except Exception:
+        pass
+    print("\n" + json.dumps(summary, indent=2))
+
+
 def cmd_sweep(a):
     """Many seeds; the winner is chosen ON VALIDATION, its test score is reported.
 
@@ -459,19 +574,23 @@ def cmd_sweep(a):
 
     for task in a.task.split(","):
         X, y, g, noise = load_task(task)
-        for specaug in ([True, False] if a.both_aug else [not a.no_specaug]):
-            for seed in range(a.seeds):
-                key = f"{task}|cnn|s{seed}|a{int(specaug)}"
-                if key in done:
-                    print(f"skip {key} (already done)", flush=True)
-                    continue
-                print(f"\n########## {key}", flush=True)
-                m, r = fit_one(task, "cnn", seed, a.epochs, specaug, X, y, g,
-                               noise, quiet=True)
-                report(task, r)
-                m.save(f"{out}/{task}_cnn_s{seed}_a{int(specaug)}.keras")
-                done[key] = {k: v for k, v in r.items() if k not in ("pred", "true")}
-                json.dump(done, open(sj, "w"), indent=2)     # after EVERY run
+        widths = [float(w) for w in a.widths.split(",")]
+        augs = [True, False] if a.both_aug else [not a.no_specaug]
+        for width in widths:
+            for specaug in augs:
+                for seed in range(a.seeds):
+                    key = f"{task}|w{width}|a{int(specaug)}|s{seed}"
+                    if key in done:
+                        print(f"skip {key} (already done)", flush=True)
+                        continue
+                    print(f"\n########## {key}", flush=True)
+                    m, r = fit_one(task, "cnn", seed, a.epochs, specaug, X, y, g,
+                                   noise, quiet=True, width=width)
+                    report(task, r)
+                    m.save(f"{out}/{mkey(task, r)}.keras")
+                    done[key] = {k: v for k, v in r.items()
+                                 if k not in ("pred", "true")}
+                    json.dump(done, open(sj, "w"), indent=2)   # after EVERY run
 
         # Winner chosen on VALIDATION. Choosing on test would reintroduce exactly
         # the selection bias this rewrite exists to remove.
@@ -480,7 +599,7 @@ def cmd_sweep(a):
             continue
         best = max(cand, key=lambda k: cand[k]["val_macro_f1"])
         b = cand[best]
-        src = f"{out}/{task}_cnn_s{b['seed']}_a{int(b['specaug'])}.keras"
+        src = f"{out}/{mkey(task, b)}.keras"
         if os.path.exists(src):
             shutil.copy(src, f"{ROOT}/out/{task}_cnn.keras")
         print(f"\n>>> {task} winner {best}: val {b['val_macro_f1']} "
@@ -593,7 +712,11 @@ if __name__ == "__main__":
     w.add_argument("--epochs", type=int, default=60)
     w.add_argument("--both-aug", action="store_true")
     w.add_argument("--no-specaug", action="store_true")
+    w.add_argument("--widths", default="1.0")
     w.add_argument("--out", default=None); w.set_defaults(f=cmd_sweep)
+    e2 = sub.add_parser("ensemble"); e2.add_argument("--task", default="msc,med,tri")
+    e2.add_argument("--top-k", type=int, default=3)
+    e2.add_argument("--out", default=None); e2.set_defaults(f=cmd_ensemble)
     e = sub.add_parser("export"); e.set_defaults(f=cmd_export)
     a = ap.parse_args()
     a.f(a)

@@ -15,11 +15,14 @@ Nothing runs on the laptop. The dataset (4 GB) never touches it.
 
 Paste the label inventory and the per-class window counts back.
 
-## Cell 2 — the overnight sweep (~60-90 min, unattended)
+## Cell 2 — the overnight run (~4-5 h, unattended)
 
-Trains every task over N seeds, picks each winner **on validation**, exports, and copies
-everything to Drive. Checkpoints after every single run, so a recycled runtime costs one
-run rather than the night — re-running the same cell resumes where it stopped.
+54 training runs across a config grid, each task's winner picked **on validation**, then the
+top 5 averaged into an ensemble, then exported. Checkpoints after every single run, so a
+recycled runtime costs one run rather than the night — re-running the identical cell resumes.
+
+`msc` is listed first deliberately: if the night is cut short, the product model is the one
+that finished.
 
 ```python
 from google.colab import drive; drive.mount('/content/drive')
@@ -28,18 +31,33 @@ from google.colab import drive; drive.mount('/content/drive')
 !pip install -q -r requirements.txt tensorflowjs
 !python dengar.py data
 !mkdir -p /content/drive/MyDrive/dengar/sweep
-!python dengar.py sweep --task msc,med,tri --seeds 5 --epochs 60 \
-    --out /content/drive/MyDrive/dengar/sweep 2>&1 | tee /content/sweep_log.txt
+SW=/content/drive/MyDrive/dengar/sweep
+
+!python dengar.py sweep --task msc,med,tri --seeds 3 --widths 0.75,1.0,1.5 \
+    --both-aug --epochs 80 --out $SW 2>&1 | tee /content/sweep_log.txt
+
+# export the single-model winners FIRST, so there is always something shippable
 !python dengar.py export 2>&1 | tee -a /content/sweep_log.txt
-!cp -r out/*.tflite out/band_snr.json out/tfjs_* /content/drive/MyDrive/dengar/
-!cd out && zip -qr /content/dengar_models.zip *.tflite band_snr.json tfjs_* && du -h /content/dengar_models.zip
-!cat /content/drive/MyDrive/dengar/sweep/sweep.json
+!cp -r out/*.tflite out/band_snr.json /content/drive/MyDrive/dengar/ || true
+
+# then try to beat them with an ensemble; failure here cannot cost the night
+!python dengar.py ensemble --task msc,med,tri --top-k 5 --out $SW 2>&1 | tee -a /content/sweep_log.txt || true
+!python dengar.py export 2>&1 | tee -a /content/sweep_log.txt || true
+
+!cp -r out/*.tflite out/band_snr.json out/ensemble.json out/tfjs_* /content/drive/MyDrive/dengar/ || true
+!cd out && zip -qr /content/dengar_models.zip *.tflite *.json tfjs_* && du -h /content/dengar_models.zip
+!cat out/ensemble.json
 ```
 
 **Leave the browser tab open.** A closed tab means a killed runtime.
 
-If it dies partway, re-run the identical cell: `data` skips what it already downloaded and
-`sweep` skips every run already in `sweep.json`.
+Grid: 3 widths x specaug on/off x 3 seeds = 18 runs per task. Roughly 3.5-4 h of T4 plus the
+~30 min Zenodo download.
+
+### If it dies overnight
+
+Re-run the identical cell. `data` skips what it already downloaded, and `sweep` skips every
+run already recorded in `sweep.json` on Drive. You lose one run, not the night.
 
 ## Re-running
 
@@ -80,6 +98,17 @@ are cheap to repeat. After I push a fix, `!git pull` then rerun the one cell.
 - **SpecAugment** (random time/frequency masks) is active in training and an exact identity
   at inference, so the exported graph is unchanged. Verified: two predictions on the same
   input are bit-identical, and the `.tflite` matches Keras.
+- **Every seed shares one train/val/test split.** Seeds vary weight initialisation and
+  augmentation noise only. That is what makes validation scores comparable across runs — and
+  therefore what makes ranking and ensembling mean anything.
+- **The ensemble only ships if it wins on validation.** `sweep` already trains many models and
+  keeps one; averaging the top 5 is the most reliable free gain available, because runs
+  differing only by initialisation make partly independent errors. K is fixed in advance,
+  ranking is by validation, and the test score is reported without ever being selected on.
+- **A tuned decision threshold is reported, not applied.** The app calls *Aedes* at >= 0.70
+  because specs.md picked a round number. `ensemble` reports the threshold that maximises
+  macro-F1 **on validation**, so the gap between "chosen" and "measured" is visible. Moving
+  the app's threshold is a deliberate act with a RED test attached, not a silent change.
 - **The TFJS export is a graph model, not a layers model.** The log-mel step is a `Lambda`
   and tfjs cannot deserialise a `Lambda` in JS. Going via SavedModel avoids the problem.
 
