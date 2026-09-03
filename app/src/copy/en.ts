@@ -38,6 +38,11 @@ export const en = {
     languageEn: 'English',
     languageMs: 'BM',
   },
+  nav: {
+    listen: 'Listen',
+    area: 'Area',
+    history: 'History',
+  },
 
   capture: {
     micOnDevice: 'on-device',

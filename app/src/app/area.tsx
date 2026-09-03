@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TabBar } from '@/components/TabBar';
 import { type Copy, useCopy } from '@/copy';
 import {
   MAP_FOCUS_LON_SPAN,
@@ -359,6 +360,7 @@ export default function Area() {
           <Text className="font-plex-medium text-[15px] text-primary">{c.area.cta}</Text>
         </Pressable>
       </ScrollView>
+      <TabBar />
     </SafeAreaView>
   );
 }

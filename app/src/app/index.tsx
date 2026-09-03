@@ -5,6 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LevelMeter } from '@/components/LevelMeter';
+import { TabBar } from '@/components/TabBar';
 import { PulseRings } from '@/components/PulseRings';
 import { SyncChip } from '@/components/SyncChip';
 import { useCopy } from '@/copy';
@@ -223,28 +224,9 @@ export default function Capture() {
           </Text>
         </View>
 
-        {/* footer — a filled raised row, not a hairline rule */}
-        <View className="mb-4 flex-row items-center justify-between rounded-block bg-surface-raised px-5">
-          {/* Two peers in the foot, never a second CTA — Area is somewhere you go, not something
-              you do. The capture button stays the only thing on this screen that acts. */}
-          <View className="flex-row items-center">
-            <Link href="/history" asChild>
-              <Pressable
-                accessibilityRole="link"
-                className="min-h-[52px] justify-center pr-6 active:opacity-70"
-              >
-                <Text className="font-plex-medium text-[15px] text-ink">{c.capture.history}</Text>
-              </Pressable>
-            </Link>
-            <Link href="/area" asChild>
-              <Pressable
-                accessibilityRole="link"
-                className="min-h-[52px] justify-center pr-6 active:opacity-70"
-              >
-                <Text className="font-plex-medium text-[15px] text-ink">{c.capture.area}</Text>
-              </Pressable>
-            </Link>
-          </View>
+        {/* The week's tally, alone. History and Area moved into the tab bar — a footer row of
+            links duplicating the shell is the clutter the shell exists to remove. */}
+        <View className="mb-4 flex-row items-center justify-center">
           <Text className="font-mono text-[13px] text-muted">{tally}</Text>
         </View>
 
@@ -258,6 +240,7 @@ export default function Capture() {
           </Pressable>
         </Link>
       </View>
+      <TabBar />
     </SafeAreaView>
   );
 }

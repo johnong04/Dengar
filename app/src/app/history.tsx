@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TabBar } from '@/components/TabBar';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { SyncChip } from '@/components/SyncChip';
 import { type Copy, useCopy } from '@/copy';
@@ -248,6 +249,7 @@ export default function History() {
           <LanguageToggle withLabel />
         </View>
       </View>
+      <TabBar />
     </SafeAreaView>
   );
 }

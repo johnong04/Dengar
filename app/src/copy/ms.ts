@@ -34,6 +34,11 @@ export const ms: Copy = {
     languageEn: 'English',
     languageMs: 'BM',
   },
+  nav: {
+    listen: 'Dengar',
+    area: 'Kawasan',
+    history: 'Rekod',
+  },
 
   capture: {
     micOnDevice: 'dalam telefon',
