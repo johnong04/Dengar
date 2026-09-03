@@ -245,8 +245,27 @@ export default function History() {
         {/* The settings-adjacent spot. History is the citizen's own-data screen, so the preference
             that governs the whole app lives at its foot — outside the ScrollView, so it is present
             in the empty state as well as under a full log, and never scrolls away. */}
-        <View className="mb-4 flex-row items-center justify-between border-t border-line pt-3">
-          <LanguageToggle withLabel />
+        <View className="mb-4 border-t border-line pt-3">
+          <View className="flex-row items-center justify-between">
+            <LanguageToggle withLabel />
+          </View>
+
+          {/* The officer surface, reached deliberately and from ONE place.
+              It is not a tab: a government dashboard sitting beside History in a citizen's shell
+              says the two audiences are peers, and the whole design rests on them not being. It is
+              also no longer only a hidden URL on /board — John opened the app after three weeks,
+              found three flows, and reasonably concluded the officer screens did not exist.
+              A settings-adjacent row is what a real product uses for a role switch, and this
+              screen is the only settings-adjacent surface the app has. */}
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={c.history.officerEntry}
+            onPress={() => router.push('/officer')}
+            className="mt-3 min-h-[44px] flex-row items-center justify-between active:opacity-70"
+          >
+            <Text className="font-plex text-[15px] text-muted">{c.history.officerEntry}</Text>
+            <Text className="font-plex text-[15px] text-muted">›</Text>
+          </Pressable>
         </View>
       </View>
       <TabBar />

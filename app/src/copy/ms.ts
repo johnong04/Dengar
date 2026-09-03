@@ -136,6 +136,7 @@ export const ms: Copy = {
   },
 
   history: {
+    officerEntry: 'Paparan pegawai kesihatan',
     back: 'Rekod',
     recorded: (n: number) => `${n} direkod`,
     aedes: 'Aedes',

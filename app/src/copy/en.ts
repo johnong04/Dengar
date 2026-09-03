@@ -135,6 +135,7 @@ export const en = {
   },
 
   history: {
+    officerEntry: 'Health officer view',
     back: 'History',
     recorded: (n: number) => `${n} recorded`,
     aedes: 'Aedes',
