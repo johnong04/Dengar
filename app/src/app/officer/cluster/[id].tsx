@@ -204,6 +204,31 @@ export default function ClusterDetail() {
   const hotTop = hot.length
     ? at({ lat: Math.max(...hot.map((b) => b.nw.lat)), lon: blocksCentre(hot).lon })
     : { x: ringC.x, y: ringC.y };
+  /**
+   * One pill per hot block: the block's id and its OWN detection count, counted geometrically from
+   * the same seeded coordinates the dots are drawn from — never hand-typed, so the pill and the
+   * dots under it cannot disagree.
+   *
+   * Halo diameter goes as sqrt(count / maxCount) because the eye compares circle AREA: a block with
+   * 4x the detections must cover 4x the area, i.e. 2x the diameter. Scaling diameter linearly is
+   * the tell that a map was drawn rather than projected.
+   */
+  const inBlock = (b: SurveyBlock, d: LatLon) =>
+    d.lat <= b.nw.lat && d.lat >= b.se.lat && d.lon >= b.nw.lon && d.lon <= b.se.lon;
+  const hotCounts = hot.map((b) => ({
+    b,
+    count: detections.filter((d) => inBlock(b, d)).length,
+  }));
+  const maxCount = Math.max(1, ...hotCounts.map((h) => h.count));
+  const HALO_MIN = 34;
+  const HALO_MAX = 86;
+  const hotPills = hotCounts.map(({ b, count }) => ({
+    id: b.id,
+    count,
+    p: at(blocksCentre([b])),
+    halo: HALO_MIN + (HALO_MAX - HALO_MIN) * Math.sqrt(count / maxCount),
+  }));
+
   const barW = SCALE_BAR_M / mpp;
   const ready = !!map && map.width > 0;
 
@@ -264,63 +289,49 @@ export default function ClusterDetail() {
               style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: 0.25 }}
             />
 
-            {/* Cluster ring — the one thing the eye lands on. STRICTLY hollow: officer-d's 5% wash
-                was harmless over a flat hand-drawn ground, but stacked on the hot blocks' own tint
-                over a real raster it summed to ~19% red and turned the whole neighbourhood salmon,
-                which erased the streets the ring exists to point at. */}
-            {blocks.length ? (
-              <View
-                pointerEvents="none"
-                className="border-2 border-o-alert"
-                style={{
-                  position: 'absolute',
-                  left: ringC.x - ringR,
-                  top: ringC.y - ringR,
-                  width: ringR * 2,
-                  height: ringR * 2,
-                  borderRadius: ringR,
-                }}
-              />
-            ) : null}
+            {/* THE DATA LAYER — one pill per hot block, carrying that block's own count.
+                Replaces (2026-09-04) a hollow 410 m ring plus eight outlined rectangles. That
+                treatment was ornament: five of the eight blocks carried no data and were outlined
+                anyway, and neither the ring nor a rectangle ever stated a number, so an officer
+                read shapes and then had to look elsewhere for the insight. A pill carrying `5`
+                sitting on the street it refers to IS the insight — the Airbnb map pattern in
+                `docs/design/inspiration/mapcluster-1.png`, which is the oracle for this screen.
 
-            {/* survey blocks. Hot ones take a tinted fill on a separate layer so the label above it
-                keeps full contrast; quiet ones are outline-only, because a white fill would hide the
-                very streets the truck has to drive down. */}
-            {blocks.map((b) => {
-              const r = box(b.nw, b.se);
-              return (
+                Behind each pill sits a graduated halo. Circle AREA is what the eye compares, so the
+                diameter goes as sqrt(count/max) — scaling diameter linearly is the classic amateur
+                tell (docs/design/research-2026-mobile.md §4). It is deliberately faint: it conveys
+                density pre-attentively, and the pill carries the exact figure. */}
+            {hotPills.map((b) => (
+              <View key={`halo-${b.id}`} pointerEvents="none">
                 <View
-                  key={b.id}
-                  pointerEvents="none"
-                  /* Quiet blocks outline in `o-muted`, not the officer hairline `o-line`: over a
-                     photographic raster that value is invisible, and an invisible survey boundary is
-                     not a hairline, it is a missing one. Hairline rules elsewhere stay `o-line`. */
-                  className={`items-start justify-end p-[3px] ${b.hot ? 'border border-o-alert' : 'border border-o-muted'}`}
-                  style={{ position: 'absolute', ...r, borderRadius: 3 }}
-                >
-                  {b.hot ? (
-                    <View
-                      className="bg-o-alert"
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        opacity: 0.12,
-                      }}
-                    />
-                  ) : null}
-                  <View className="rounded-[3px] bg-o-bg px-1">
-                    <Text
-                      className={`font-mono text-[10px] ${b.hot ? 'text-o-alert' : 'text-o-muted'}`}
-                    >
-                      {b.id}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+                  className="bg-o-alert"
+                  style={{
+                    position: 'absolute',
+                    left: b.p.x - b.halo / 2,
+                    top: b.p.y - b.halo / 2,
+                    width: b.halo,
+                    height: b.halo,
+                    borderRadius: b.halo / 2,
+                    opacity: 0.22,
+                  }}
+                />
+              </View>
+            ))}
+
+            {hotPills.map((b) => (
+              <FloatLabel
+                key={`pill-${b.id}`}
+                at={b.p}
+                viewportWidth={visible.width}
+                reserveTop={topBand}
+                className="flex-row items-center gap-1.5 rounded-pill bg-o-alert px-2.5 py-1"
+              >
+                <Text className="font-mono text-[10px] text-o-bg" style={{ opacity: 0.85 }}>
+                  {b.id}
+                </Text>
+                <Text className="font-mono-medium text-[13px] text-o-bg">{b.count}</Text>
+              </FloatLabel>
+            ))}
 
             {/* detections — size AND colour carry recency, so the newest reads first at arm's length */}
             {detections.map((d) => {
