@@ -28,27 +28,28 @@ from google.colab import drive; drive.mount('/content/drive')
 !git clone -b john-v1-citizen https://github.com/johnong04/Dengar.git /content/Dengar
 %cd /content/Dengar/ml
 !pip install -q -r requirements.txt tensorflowjs
-!python dengar.py data
 !mkdir -p /content/drive/MyDrive/dengar/sweep
-SW=/content/drive/MyDrive/dengar/sweep
+!python dengar.py data
 
-!python dengar.py sweep --task msc,med,tri --seeds 3 --widths 0.75,1.0,1.5 \
-    --both-aug --epochs 80 --max-hours 3.5 --out $SW 2>&1 | tee $SW/sweep_log.txt
+!python dengar.py sweep --task msc,med,tri --seeds 3 --widths 0.75,1.0,1.5     --both-aug --epochs 80 --max-hours 3.5     --out /content/drive/MyDrive/dengar/sweep 2>&1     | tee /content/drive/MyDrive/dengar/sweep/sweep_log.txt
 
-# single-model winners are exported and copied to Drive FIRST, so something is
-# always shippable before anything risky is attempted
-!python dengar.py export 2>&1 | tee -a $SW/sweep_log.txt
+# single-model winners exported and copied to Drive FIRST, so something is always
+# shippable before anything riskier is attempted
+!python dengar.py export 2>&1 | tee -a /content/drive/MyDrive/dengar/sweep/sweep_log.txt
 !cp -r out/*.tflite out/band_snr.json /content/drive/MyDrive/dengar/ || true
 
 # then try to beat them; a failure here cannot cost the night
-!python dengar.py ensemble --task msc,med,tri --top-k 5 --out $SW 2>&1 | tee -a $SW/sweep_log.txt || true
-!python dengar.py export 2>&1 | tee -a $SW/sweep_log.txt || true
+!python dengar.py ensemble --task msc,med,tri --top-k 5     --out /content/drive/MyDrive/dengar/sweep 2>&1     | tee -a /content/drive/MyDrive/dengar/sweep/sweep_log.txt || true
+!python dengar.py export 2>&1 | tee -a /content/drive/MyDrive/dengar/sweep/sweep_log.txt || true
 
 !cp -r out/*.tflite out/*.json out/tfjs_* /content/drive/MyDrive/dengar/ || true
 !cd out && zip -qr /content/drive/MyDrive/dengar/dengar_models.zip *.tflite *.json tfjs_*
 !sync; ls -la /content/drive/MyDrive/dengar/
 !cat out/ensemble.json
 ```
+
+Paths are written out in full on purpose. A shell variable does not survive between `!` lines
+(each is its own shell), and a bare `VAR=...` line in a Colab cell is a Python SyntaxError.
 
 **Leave the browser tab open.** A closed tab means a killed runtime.
 
