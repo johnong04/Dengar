@@ -24,9 +24,10 @@ export function RoadmapHeader({ title, kicker }: { title: string; kicker: string
           accessibilityRole="button"
           accessibilityLabel={c.common.back}
           // Deep-linked (a screenshot run, a shared URL) there is no history to pop, so fall back
-          // to the officer home. `/officer/index` is how expo-router's generated href union spells
-          // that route while `officer/_layout` is a Stack.
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/officer/index'))}
+          // to the officer home. Spelled `/officer`: the generated href union changed when the
+          // native deps landed and regenerated expo-router's types — `/officer/index` no longer
+          // exists in it.
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/officer'))}
           className="h-11 w-11 items-center justify-center"
           style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
         >
