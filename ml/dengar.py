@@ -242,7 +242,53 @@ def log_layer():
     return _LOG
 
 
-def build(n_classes, arch="cnn"):
+_SPEC = None
+
+
+def spec_augment_layer():
+    """SpecAugment — random frequency and time masks, TRAINING ONLY.
+
+    The binding constraint is 89 Aedes recordings, and masking is the cheapest
+    honest way to make a small set behave like a larger one: the model cannot
+    lean on any single frequency band or instant. Inference is the identity, so
+    the exported graph is unchanged.
+    """
+    global _SPEC
+    if _SPEC is None:
+        import keras
+        from keras import ops, random as krandom
+
+        @keras.saving.register_keras_serializable(package="dengar")
+        class SpecAugment(keras.layers.Layer):
+            def __init__(self, freq_w=10, time_w=40, n=2, **kw):
+                super().__init__(**kw)
+                self.freq_w, self.time_w, self.n = freq_w, time_w, n
+
+            def call(self, x, training=None):
+                if not training:
+                    return x
+                b = ops.shape(x)[0]
+                T, F = x.shape[1], x.shape[2]
+                for width, size, axis in ((self.time_w, T, 1), (self.freq_w, F, 2)):
+                    for _ in range(self.n):
+                        w = krandom.uniform((b, 1, 1), 0, width)
+                        s = krandom.uniform((b, 1, 1), 0, size - width)
+                        shape = (1, size, 1) if axis == 1 else (1, 1, size)
+                        idx = ops.reshape(ops.arange(size, dtype="float32"), shape)
+                        keep = ops.logical_or(idx < s, idx >= s + w)
+                        x = x * ops.cast(keep, x.dtype)
+                return x
+
+            def get_config(self):
+                c = super().get_config()
+                c.update(freq_w=self.freq_w, time_w=self.time_w, n=self.n)
+                return c
+
+        _SPEC = SpecAugment
+    return _SPEC
+
+
+def build(n_classes, arch="cnn", specaug=True):
     """arch='cnn'       — 380k params from scratch.
        arch='mobilenet' — ImageNet-pretrained MobileNetV2 on the spectrogram.
 
@@ -264,6 +310,8 @@ def build(n_classes, arch="cnn"):
     x = L.Dense(NMEL, use_bias=False, trainable=False, name="mel")(x)  # (T, NMEL)
     x = log_layer()(name="logmel")(x)
     x = L.LayerNormalization(axis=[1, 2], name="cmvn")(x)              # gain-invariant
+    if specaug:
+        x = spec_augment_layer()(name="specaug")(x)
     x = L.Reshape((NFRAME, NMEL, 1))(x)
 
     if arch == "mobilenet":
@@ -301,66 +349,146 @@ def augment(X, y, noise, rng):
     return np.clip(X, -1.0, 1.0), y
 
 
-def cmd_train(a):
-    import tensorflow as tf
-    from sklearn.model_selection import GroupShuffleSplit
-    from sklearn.metrics import confusion_matrix, classification_report
+def split3(X, y, g, seed=0):
+    """train / val / test, all disjoint BY RECORDING.
 
-    task = a.task
-    names = TASKS[task][0]
+    The earlier version passed the test set as validation_data and let
+    EarlyStopping restore the epoch with the best test accuracy — selecting on
+    the data it then reported, which inflates the number. Validation now comes
+    out of the training pool; test is not looked at until the final predict.
+    The test split is fixed across seeds so runs stay comparable.
+    """
+    from sklearn.model_selection import GroupShuffleSplit
+    gss = lambda frac, rs: GroupShuffleSplit(n_splits=1, test_size=frac, random_state=rs)
+    pool, te = next(gss(0.25, 0).split(X, y, g))
+    p2, v2 = next(gss(0.20, seed).split(X[pool], y[pool], g[pool]))
+    return pool[p2], pool[v2], te
+
+
+def load_task(task):
     X = np.load(f"{CACHE}/{task}_X.npy")
     y = np.load(f"{CACHE}/{task}_y.npy")
     g = np.load(f"{CACHE}/{task}_g.npy")
-
-    # Split by RECORDING, never by window. Overlapping windows from one file on
-    # both sides of the split is what produces a 99% number that means nothing.
-    tr, te = next(GroupShuffleSplit(n_splits=1, test_size=0.25,
-                                    random_state=0).split(X, y, g))
-    print(f"train {len(tr)} / test {len(te)} windows, "
-          f"{len(set(g[tr]))}/{len(set(g[te]))} recordings, no file shared")
-
     noise = None
     if os.path.exists(f"{CACHE}/med_X.npy"):
         ny = np.load(f"{CACHE}/med_y.npy")
         nX = np.load(f"{CACHE}/med_X.npy", mmap_mode="r")
         noise = np.array(nX[ny == 1][:400])
-    Xtr, ytr = augment(X[tr], y[tr], noise, np.random.default_rng(0))
+    return X, y, g, noise
 
+
+def fit_one(task, arch, seed, epochs, specaug, X, y, g, noise, quiet=False):
+    """One training run. Returns (model, report dict) — test metrics included but
+    never used to choose anything."""
+    import tensorflow as tf
+    from sklearn.metrics import classification_report
+    names = TASKS[task][0]
+    tf.keras.utils.set_random_seed(seed)
+
+    tr, va, te = split3(X, y, g, seed)
+    Xtr, ytr = augment(X[tr], y[tr], noise, np.random.default_rng(seed))
     cnt = collections.Counter(ytr.tolist())
     cw = {c: len(ytr) / (len(cnt) * n) for c, n in cnt.items()}
-    print("class weights", {names[c]: round(w, 2) for c, w in cw.items()})
 
-    m = build(len(names), a.arch)
-    m.compile(optimizer=tf.keras.optimizers.Adam(1e-4 if a.arch == "mobilenet" else 1e-3),
+    m = build(len(names), arch, specaug=specaug)
+    steps = max(1, len(Xtr) // 32) * epochs
+    # Cosine decay with warmup. The flat-LR runs oscillated hard — val accuracy
+    # swinging 0.85 -> 0.32 -> 0.84 between adjacent epochs — so early stopping
+    # was firing on noise instead of on convergence.
+    lr = tf.keras.optimizers.schedules.CosineDecay(
+        initial_learning_rate=0.0, decay_steps=steps,
+        warmup_target=1e-4 if arch == "mobilenet" else 1e-3,
+        warmup_steps=max(1, steps // 20))
+    m.compile(optimizer=tf.keras.optimizers.Adam(lr),
               loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-    m.fit(Xtr, ytr, validation_data=(X[te], y[te]), epochs=a.epochs,
-          batch_size=32, class_weight=cw, callbacks=[
-              tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=6,
+    m.fit(Xtr, ytr, validation_data=(X[va], y[va]), epochs=epochs, batch_size=32,
+          class_weight=cw, verbose=0 if quiet else 1, callbacks=[
+              tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=12,
                                                restore_best_weights=True)])
 
-    p = m.predict(X[te], batch_size=64).argmax(1)
-    rep = classification_report(y[te], p, target_names=names, digits=3, zero_division=0, output_dict=True)
-    print(f"\n=== {task} / {a.arch} — paste this back ===")
-    print("classes:", names)
-    print("confusion matrix (rows=true, cols=pred):")
-    print(confusion_matrix(y[te], p))
-    print(classification_report(y[te], p, target_names=names, digits=3, zero_division=0))
-    print(f"held-out recordings: {len(set(g[te]))}")
+    pv = m.predict(X[va], batch_size=64, verbose=0).argmax(1)
+    pt = m.predict(X[te], batch_size=64, verbose=0).argmax(1)
+    rv = classification_report(y[va], pv, digits=3, zero_division=0, output_dict=True)
+    rt = classification_report(y[te], pt, target_names=names, digits=3,
+                               zero_division=0, output_dict=True)
+    return m, {"seed": seed, "arch": arch, "specaug": bool(specaug),
+               "val_macro_f1": round(rv["macro avg"]["f1-score"], 4),
+               "test_macro_f1": round(rt["macro avg"]["f1-score"], 4),
+               "test_accuracy": round(rt["accuracy"], 4),
+               "test_recordings": len(set(g[te].tolist())),
+               "params": int(m.count_params()),
+               "pred": pt.tolist(), "true": y[te].tolist()}
 
-    # macro-F1, not accuracy: with 783 aedes against 2000 not_aedes, accuracy
-    # rewards a model that just says not_aedes.
-    score = rep["macro avg"]["f1-score"]
+
+def report(task, r):
+    from sklearn.metrics import confusion_matrix, classification_report
+    names = TASKS[task][0]
+    print(f"\n=== {task} / {r['arch']} / seed {r['seed']} / specaug {r['specaug']} ===")
+    print(f"val macro-F1 {r['val_macro_f1']}   TEST macro-F1 {r['test_macro_f1']}")
+    print(f"held-out recordings: {r['test_recordings']}")
+    print(confusion_matrix(r["true"], r["pred"]))
+    print(classification_report(r["true"], r["pred"], target_names=names,
+                                digits=3, zero_division=0))
+
+
+def cmd_train(a):
+    X, y, g, noise = load_task(a.task)
+    m, r = fit_one(a.task, a.arch, a.seed, a.epochs, not a.no_specaug, X, y, g, noise)
+    report(a.task, r)
     os.makedirs(f"{ROOT}/out", exist_ok=True)
-    m.save(f"{ROOT}/out/{task}_{a.arch}.keras")
+    m.save(f"{ROOT}/out/{a.task}_{a.arch}.keras")
     sf = f"{ROOT}/out/scores.json"
     all_s = json.load(open(sf)) if os.path.exists(sf) else {}
-    all_s[f"{task}_{a.arch}"] = {"macro_f1": round(score, 4),
-                                 "accuracy": round(rep["accuracy"], 4),
-                                 "params": int(m.count_params()),
-                                 "test_recordings": len(set(g[te].tolist()))}
+    all_s[f"{a.task}_{a.arch}"] = {k: v for k, v in r.items() if k not in ("pred", "true")}
     json.dump(all_s, open(sf, "w"), indent=2)
-    print(f"saved out/{task}_{a.arch}.keras  macro-F1 {score:.3f}  "
-          f"({m.count_params()} params)")
+
+
+def cmd_sweep(a):
+    """Many seeds; the winner is chosen ON VALIDATION, its test score is reported.
+
+    Built to survive a recycled Colab runtime: every run appends to sweep.json and
+    a re-run skips what is already there, so a disconnect costs one run, not the
+    night. Point --out at Drive.
+    """
+    import shutil
+    out = a.out or f"{ROOT}/out"
+    os.makedirs(out, exist_ok=True)
+    os.makedirs(f"{ROOT}/out", exist_ok=True)
+    sj = f"{out}/sweep.json"
+    done = json.load(open(sj)) if os.path.exists(sj) else {}
+
+    for task in a.task.split(","):
+        X, y, g, noise = load_task(task)
+        for specaug in ([True, False] if a.both_aug else [not a.no_specaug]):
+            for seed in range(a.seeds):
+                key = f"{task}|cnn|s{seed}|a{int(specaug)}"
+                if key in done:
+                    print(f"skip {key} (already done)", flush=True)
+                    continue
+                print(f"\n########## {key}", flush=True)
+                m, r = fit_one(task, "cnn", seed, a.epochs, specaug, X, y, g,
+                               noise, quiet=True)
+                report(task, r)
+                m.save(f"{out}/{task}_cnn_s{seed}_a{int(specaug)}.keras")
+                done[key] = {k: v for k, v in r.items() if k not in ("pred", "true")}
+                json.dump(done, open(sj, "w"), indent=2)     # after EVERY run
+
+        # Winner chosen on VALIDATION. Choosing on test would reintroduce exactly
+        # the selection bias this rewrite exists to remove.
+        cand = {k: v for k, v in done.items() if k.startswith(task + "|")}
+        if not cand:
+            continue
+        best = max(cand, key=lambda k: cand[k]["val_macro_f1"])
+        b = cand[best]
+        src = f"{out}/{task}_cnn_s{b['seed']}_a{int(b['specaug'])}.keras"
+        if os.path.exists(src):
+            shutil.copy(src, f"{ROOT}/out/{task}_cnn.keras")
+        print(f"\n>>> {task} winner {best}: val {b['val_macro_f1']} "
+              f"TEST {b['test_macro_f1']}  (of {len(cand)} runs)", flush=True)
+
+    print("\n===== LEADERBOARD (ranked by VAL; test shown, never selected on) =====")
+    for k, v in sorted(done.items(), key=lambda kv: -kv[1]["val_macro_f1"]):
+        print(f"  {k:22s} val {v['val_macro_f1']:.4f}   test {v['test_macro_f1']:.4f}")
 
 
 # -------------------------------------------------------------- export --------
@@ -381,23 +509,27 @@ def band_snr(x):
 
 def cmd_export(a):
     import tensorflow as tf
-    log_layer()                                  # register before load_model
+    log_layer(); spec_augment_layer()            # register before load_model
     os.makedirs(f"{ROOT}/out", exist_ok=True)
     sf = f"{ROOT}/out/scores.json"
     scores = json.load(open(sf)) if os.path.exists(sf) else {}
     made = []
     for task, fname in (("med", "med.tflite"), ("msc", "msc.tflite"), ("tri", "tri.tflite")):
-        # Pick the architecture that actually won this task. Nobody has to be
-        # awake to compare them.
-        cand = {k: v for k, v in scores.items() if k.startswith(task + "_")}
-        if not cand:
-            continue
-        best = max(cand, key=lambda k: cand[k]["macro_f1"])
-        src = f"{ROOT}/out/{best}.keras"
-        if not os.path.exists(src):
-            continue
-        print(f"\n{task}: using {best} (macro-F1 {cand[best]['macro_f1']}) "
-              f"out of {sorted(cand)}")
+        # `sweep` already picked this task's winner ON VALIDATION and copied it
+        # here, so prefer it. Fall back to comparing whatever `train` left behind.
+        src = f"{ROOT}/out/{task}_cnn.keras"
+        if os.path.exists(src):
+            print(f"\n{task}: using {task}_cnn.keras (sweep winner)")
+        else:
+            cand = {k: v for k, v in scores.items() if k.startswith(task + "_")}
+            cand = {k: v for k, v in cand.items()
+                    if os.path.exists(f"{ROOT}/out/{k}.keras")}
+            if not cand:
+                continue
+            rank = lambda k: cand[k].get("val_macro_f1", cand[k].get("macro_f1", 0))
+            best = max(cand, key=rank)
+            src = f"{ROOT}/out/{best}.keras"
+            print(f"\n{task}: using {best} (val {rank(best)}) out of {sorted(cand)}")
         # safe_mode=False because the log-mel step is a Lambda and Keras refuses to
         # deserialise a Python lambda without it. The artifact is one we just wrote.
         m = tf.keras.models.load_model(src, safe_mode=False)
@@ -453,7 +585,15 @@ if __name__ == "__main__":
     d = sub.add_parser("data"); d.add_argument("--task", default=None); d.set_defaults(f=cmd_data)
     t = sub.add_parser("train"); t.add_argument("--task", default="msc", choices=list(TASKS))
     t.add_argument("--arch", default="cnn", choices=["cnn", "mobilenet"])
-    t.add_argument("--epochs", type=int, default=30); t.set_defaults(f=cmd_train)
+    t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--no-specaug", action="store_true")
+    t.add_argument("--epochs", type=int, default=60); t.set_defaults(f=cmd_train)
+    w = sub.add_parser("sweep"); w.add_argument("--task", default="msc,med,tri")
+    w.add_argument("--seeds", type=int, default=5)
+    w.add_argument("--epochs", type=int, default=60)
+    w.add_argument("--both-aug", action="store_true")
+    w.add_argument("--no-specaug", action="store_true")
+    w.add_argument("--out", default=None); w.set_defaults(f=cmd_sweep)
     e = sub.add_parser("export"); e.set_defaults(f=cmd_export)
     a = ap.parse_args()
     a.f(a)

@@ -15,33 +15,31 @@ Nothing runs on the laptop. The dataset (4 GB) never touches it.
 
 Paste the label inventory and the per-class window counts back.
 
-## Cell 2 — everything else, unattended (~60-90 min)
+## Cell 2 — the overnight sweep (~60-90 min, unattended)
 
-Trains all three tasks under both architectures, exports the winner of each, zips it.
-Nobody needs to be watching: `export` reads `out/scores.json` and picks the best
-architecture per task by macro-F1 on its own.
+Trains every task over N seeds, picks each winner **on validation**, exports, and copies
+everything to Drive. Checkpoints after every single run, so a recycled runtime costs one
+run rather than the night — re-running the same cell resumes where it stopped.
 
 ```python
+from google.colab import drive; drive.mount('/content/drive')
+!git clone -b john-v1-citizen https://github.com/johnong04/Dengar.git /content/Dengar
 %cd /content/Dengar/ml
-!git pull
-!pip install -q tensorflowjs
-!for t in msc med tri; do for a in cnn mobilenet; do echo "===== $t / $a"; \
-   python dengar.py train --task $t --arch $a --epochs 30; done; done 2>&1 \
-   | tee /content/train_log.txt
-!python dengar.py export 2>&1 | tee -a /content/train_log.txt
-!cat out/scores.json
-!cd out && zip -qr /content/dengar_models.zip . && du -h /content/dengar_models.zip
+!pip install -q -r requirements.txt tensorflowjs
+!python dengar.py data
+!mkdir -p /content/drive/MyDrive/dengar/sweep
+!python dengar.py sweep --task msc,med,tri --seeds 5 --epochs 60 \
+    --out /content/drive/MyDrive/dengar/sweep 2>&1 | tee /content/sweep_log.txt
+!python dengar.py export 2>&1 | tee -a /content/sweep_log.txt
+!cp -r out/*.tflite out/band_snr.json out/tfjs_* /content/drive/MyDrive/dengar/
+!cd out && zip -qr /content/dengar_models.zip *.tflite band_snr.json tfjs_* && du -h /content/dengar_models.zip
+!cat /content/drive/MyDrive/dengar/sweep/sweep.json
 ```
 
-**Leave the browser tab open.** Colab free disconnects a runtime whose tab is gone,
-and an hour of training goes with it. Everything is logged to `/content/train_log.txt`
-so scrollback loss is survivable; a disconnect is not.
+**Leave the browser tab open.** A closed tab means a killed runtime.
 
-Download `/content/dengar_models.zip` from the Colab file panel, unzip into
-`app/assets/models/`.
-
-**macro-F1, not accuracy**, decides the winner. With 783 *Aedes* windows against 2000
-not_aedes, accuracy rewards a model that always says not_aedes; macro-F1 does not.
+If it dies partway, re-run the identical cell: `data` skips what it already downloaded and
+`sweep` skips every run already in `sweep.json`.
 
 ## Re-running
 
@@ -71,6 +69,17 @@ are cheap to repeat. After I push a fix, `!git pull` then rerun the one cell.
   file on both sides of the split is what manufactures a meaningless 99%.
 - **No sex head.** HumBugDB has 22.2 min of female *Aedes* and 0.1 min of male. There is
   nothing to train on. specs.md §6 ranked it first; the data says no.
+- **The test set is never used to choose anything.** An earlier version passed the test set
+  as `validation_data` and let EarlyStopping restore the epoch with the best test accuracy —
+  selecting on the data it then reported, which inflates the figure. `split3` now carves
+  train/val/test disjointly by recording, with the test split fixed across seeds so runs
+  stay comparable, and `sweep` ranks candidates on **validation** only.
+- **Cosine LR with warmup.** The flat-LR runs oscillated hard — val accuracy swinging
+  0.85 -> 0.32 -> 0.84 between adjacent epochs — so early stopping fired on noise instead of
+  on convergence. This is the single biggest expected gain, and it is a bug fix, not a tweak.
+- **SpecAugment** (random time/frequency masks) is active in training and an exact identity
+  at inference, so the exported graph is unchanged. Verified: two predictions on the same
+  input are bit-identical, and the `.tflite` matches Keras.
 - **The TFJS export is a graph model, not a layers model.** The log-mel step is a `Lambda`
   and tfjs cannot deserialise a `Lambda` in JS. Going via SavedModel avoids the problem.
 

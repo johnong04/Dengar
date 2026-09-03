@@ -33,30 +33,38 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
 - [x] M2 TFLite conversion verified locally before any Colab run (380k params, 1.45 MB,
       `[1,80000]` in / `[1,2]` out, matches Keras to 7dp). Project's named #1 risk, closed.
 - [x] M3 `data` — 783 aedes windows from all 89 recordings, 2000 not_aedes from 2000 files
-- [x] M4/M5 all three tasks × both architectures, 16 min on a T4. macro-F1 on held-out
-      **recordings** (not windows): **msc 0.840** (acc 0.849, 523 test recordings) ·
-      **med 0.924** (1000) · tri 0.602 (585)
+- [x] M4/M5 all three tasks, both architectures. **Superseded — see M9.** The figures this
+      block first carried (msc 0.840) came from a run whose files were lost when a Colab VM
+      was recycled; the run that actually shipped scored msc 0.804 / med 0.941 / tri 0.667.
+      `docs/ml-results.md` is the single citable source and it carries the shipped run.
 
-#### The on-camera numbers — msc, the product model
+#### The on-camera numbers — msc, the product model (shipped run)
 
 ```
                  predicted
               aedes  not_aedes
-true aedes      226      9        recall 0.962, precision 0.689
-true not_aedes  102    398        recall 0.796, precision 0.978
+true aedes      194     41        recall 0.826, precision 0.681
+true not_aedes   91    409        recall 0.818, precision 0.909
 ```
 
-**Recall 0.962, precision 0.689.** It almost never misses an *Aedes* and cries wolf on
-roughly one call in three. That is the right way round for a health tool — a miss is an
-unreported dengue risk, a false alarm is a wasted fogging run — and it is **a dial, not a
-property**: `gating.ts` needs MSC ≥ 0.70 to call *Aedes*, and raising that trades recall
-for precision. Say "we chose which way to be wrong", not "it is 85% accurate".
+**Recall 0.826, precision 0.681** — macro-F1 0.804 over 523 held-out recordings. It rarely
+misses an *Aedes* and cries wolf on about one call in three. Right way round for a health
+tool, and **a dial not a property**: `gating.ts` needs MSC ≥ 0.70 to call *Aedes*, and
+raising that trades recall for precision. Say "we chose which way to be wrong".
 
-med: mosquito recall 0.883, background recall 0.964.
-tri: *Aedes* recall 0.504 — keep it out of the narration.
+med macro-F1 0.941 · tri 0.667 (*Aedes* recall 0.769 — still keep it out of the narration).
+Run-to-run spread is roughly ±0.04, so quote two significant figures, not three.
 
 Caveat that must be said out loud: tested on HumBugDB's own tascam recordings, **not**
 phone-mic audio. Abuzz would be the test that proves phone transfer and it is not run.
+
+- [x] M9 **Methodology fix — the shipped numbers were optimistically biased.** `cmd_train`
+      passed the test set as `validation_data` and let EarlyStopping restore the epoch with
+      the best *test* accuracy: selection on the data it then reported. Replaced with a
+      3-way split (train/val/test, disjoint by recording, test fixed across seeds), cosine
+      LR with warmup, and SpecAugment. Plus a `sweep` command that picks the winner on
+      **validation** and checkpoints to Drive after every run so a recycled runtime costs
+      one run, not the night.
 - [ ] M6 `export` — tflite written; band-SNR floor + reference table still to land in specs.md §4
 - [ ] M7 three demo clips (clean Aedes / non-Aedes / correctly-abstaining noisy)
 - [ ] M8 stretch: real in-browser inference on Expo web, behind `classify()`
