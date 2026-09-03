@@ -354,63 +354,67 @@ function Detected({
                 <Text className="font-mono text-[12px] text-verdict-aedes-soft">{stamp}</Text>
               </View>
 
-              {/* verdict */}
-              <View className="mt-12">
-                <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
-                  {c.result.aedesVerdict}
-                </Text>
-                <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
-                  {c.result.aedesBody}
-                </Text>
+              {/* Verdict block, vertically centred in the slack rather than pinned under the
+                  header. Pinned, it left ~150px of empty drench between the stakes card and the
+                  actions — on a fully saturated ground a hole that size reads as an unfinished
+                  screen, and this is the frame the whole demo builds to. Splitting the slack above
+                  and below turns it into composition. */}
+              <View className="flex-1 justify-center">
+                <View className="mt-6">
+                  <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
+                    {c.result.aedesVerdict}
+                  </Text>
+                  <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
+                    {c.result.aedesBody}
+                  </Text>
 
-                {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
-                <View className="mt-8 flex-row items-baseline gap-3">
-                  <Text className="font-mono-medium text-[30px] text-warm-white">{pct}%</Text>
-                  <Text className="font-mono text-[13px] text-verdict-aedes-soft">{context}</Text>
-                </View>
-                <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
-                  <View
-                    className="h-full rounded-pill bg-warm-white"
-                    style={{ width: `${pct}%` }}
-                  />
-                </View>
-
-                {/* fine-grained heads, recessed — rows exist only when a head reported (specs §6) */}
-                {rows.length > 0 && (
-                  <View className="mt-8 rounded-block bg-verdict-aedes-sunken px-5">
-                    {rows.map((row, i) => (
-                      <View
-                        key={row.label}
-                        className={`flex-row items-center justify-between py-4 ${
-                          i === 0 ? '' : 'border-t border-verdict-aedes-line'
-                        }`}
-                      >
-                        <Text className="font-plex text-[15px] text-verdict-aedes-soft">
-                          {row.label}
-                        </Text>
-                        <Text className="font-mono text-[15px] text-warm-white">
-                          {row.value}{' '}
-                          <Text className="font-mono text-[15px] text-verdict-aedes-soft">
-                            {row.suffix}
-                          </Text>
-                        </Text>
-                      </View>
-                    ))}
+                  {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
+                  <View className="mt-8 flex-row items-baseline gap-3">
+                    <Text className="font-mono-medium text-[30px] text-warm-white">{pct}%</Text>
+                    <Text className="font-mono text-[13px] text-verdict-aedes-soft">{context}</Text>
                   </View>
-                )}
+                  <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
+                    <View
+                      className="h-full rounded-pill bg-warm-white"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </View>
 
-                {/* the stakes, raised */}
-                <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
-                  <Text className="font-mono text-[12px] text-verdict-aedes-soft">
-                    {c.result.whyThisMatters}
-                  </Text>
-                  <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">
-                    {c.result.aedesStakes}
-                  </Text>
+                  {/* fine-grained heads, recessed — rows exist only when a head reported (specs §6) */}
+                  {rows.length > 0 && (
+                    <View className="mt-8 rounded-block bg-verdict-aedes-sunken px-5">
+                      {rows.map((row, i) => (
+                        <View
+                          key={row.label}
+                          className={`flex-row items-center justify-between py-4 ${
+                            i === 0 ? '' : 'border-t border-verdict-aedes-line'
+                          }`}
+                        >
+                          <Text className="font-plex text-[15px] text-verdict-aedes-soft">
+                            {row.label}
+                          </Text>
+                          <Text className="font-mono text-[15px] text-warm-white">
+                            {row.value}{' '}
+                            <Text className="font-mono text-[15px] text-verdict-aedes-soft">
+                              {row.suffix}
+                            </Text>
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* the stakes, raised */}
+                  <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
+                    <Text className="font-mono text-[12px] text-verdict-aedes-soft">
+                      {c.result.whyThisMatters}
+                    </Text>
+                    <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">
+                      {c.result.aedesStakes}
+                    </Text>
+                  </View>
                 </View>
               </View>
-
-              <View className="flex-1" />
 
               {/* next move */}
               <View className="gap-3 pb-4">
