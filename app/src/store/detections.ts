@@ -22,7 +22,7 @@ export type Detection = {
 let detections: Detection[] = [
   {
     id: 'seed-1',
-    at: '2026-08-11T21:42:00+08:00',
+    at: '2026-09-03T21:42:00+08:00',
     species: 'aedes',
     confidence: 0.91,
     detail: { taxon: { name: 'Aedes aegypti', confidence: 0.84 }, sex: { value: 'female', confidence: 0.77 } },
@@ -30,14 +30,14 @@ let detections: Detection[] = [
   },
   {
     id: 'seed-2',
-    at: '2026-08-10T19:05:00+08:00',
+    at: '2026-09-02T19:05:00+08:00',
     species: 'not_aedes',
     confidence: 0.82,
     synced: true,
   },
   {
     id: 'seed-3',
-    at: '2026-08-12T06:58:00+08:00',
+    at: '2026-09-04T07:12:00+08:00',
     species: 'aedes',
     confidence: 0.74,
     synced: false,

@@ -86,8 +86,8 @@ export type TrendSeries = {
 /** Frozen so screenshots are reproducible. */
 export const district = {
   name: 'Setapak',
-  stamp: 'TUE 12 AUG · 07:04',
-  simulated: true,
+  stamp: 'FRI 4 SEP · 09:00',
+  simulated: false,
 } as const;
 
 /* ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -411,4 +411,4 @@ export const MAP_FOCUS_LON_SPAN = 0.010471;
 export const CLUSTER_RING_RADIUS_M = 410;
 
 /** `district.stamp` + `activeCluster` fogging window (48 h). Arithmetic, not a typed-in time. */
-export const FOG_BY_STAMP = '14 AUG 07:04';
+export const FOG_BY_STAMP = '6 SEP 09:00';
