@@ -11,18 +11,25 @@ import { judge, type RawInference, type Verdict } from './gating';
 export const IS_STUB = true;
 
 /**
- * DEMO SWITCH — set back to `false` when the demo is over.
+ * DEMO SCRIPT — set `DEMO_SCRIPTED` back to `false` when the recording is done.
  *
- * Forces every capture to return the positive-Aedes verdict instead of rolling the dice. The stub
- * is weighted so abstain dominates (~70%), which is right for design and wrong for a live demo:
- * tapping Listen on camera usually produces "no mosquito found".
+ * The stub is weighted so abstain dominates (~70%), which is right for design and wrong for a
+ * one-take recording: on camera, tapping Listen usually produces "no mosquito found".
  *
- * This does NOT make the app dishonest — the stub was already inventing every verdict, and the
- * result screen carries its own simulation marker either way. But it must not reach a `preview`
- * APK unnoticed: a build where every recording says Aedes, handed to a judge who taps it twice,
- * reads as a rigged demo. Flip it back before any build that leaves this laptop.
+ * Scripted, the captures run in a fixed order — FIRST tap abstains (too noisy), SECOND and every
+ * tap after gives the positive Aedes verdict. That order is the point: a single tap that always
+ * says Aedes reads as a magic trick, whereas refusing once and then succeeding shows the selective
+ * abstention the whole pitch rests on, and makes the Aedes call more credible rather than less.
+ *
+ * The counter lives in module scope, so it survives in-app navigation (the result screen is a
+ * client-side push) but RESETS ON A PAGE RELOAD. Record in one continuous take without refreshing,
+ * or the sequence starts over.
+ *
+ * This must not reach a `preview` APK: a build that always says Aedes, handed to a judge who taps
+ * it a third time, reads as rigged. Flip it back before any build leaves this laptop.
  */
-const DEMO_FORCE_AEDES = true;
+const DEMO_SCRIPTED = true;
+let demoTake = 0;
 
 /** @param audio 5.0 s mono, 16 kHz, float32 normalized -1.0…1.0 */
 export async function classify(audio: Float32Array): Promise<Verdict> {
@@ -32,7 +39,13 @@ export async function classify(audio: Float32Array): Promise<Verdict> {
 
   await new Promise((r) => setTimeout(r, 320)); // the measured on-device latency (arXiv:2306.10091)
 
-  if (DEMO_FORCE_AEDES) {
+  if (DEMO_SCRIPTED) {
+    demoTake += 1;
+    // Take 1: a real mosquito is audible but the band-SNR floor is not cleared, so the gate
+    // abstains with `too_noisy` — the honest refusal, produced by the SAME gating code as every
+    // other verdict, not by a hardcoded screen.
+    if (demoTake === 1) return judge({ medScore: 0.9, mscScores: [0.95, 0.05], bandSnrDb: 2 });
+    // Take 2 onward: clean capture, Aedes.
     return judge({
       medScore: 0.93,
       mscScores: [0.91, 0.09],
