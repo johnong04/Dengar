@@ -1,6 +1,6 @@
 # ML results — the only source for any model figure
 
-Written by the `ml/` session, 2026-08-12. **If a number about the model appears on a slide or
+Written by the `ml/` session, last measured 2026-09-04. **If a number about the model appears on a slide or
 in an answer, it comes from here.** specs.md §9 governs epidemiology figures; this file governs
 model figures. Nothing else is citable.
 
@@ -18,8 +18,8 @@ user-facing word lives in the app.
 Input to all three: **5.0 s mono, 16 kHz, float32 in −1…1**. The mel-spectrogram front-end is
 inside the model file, so the app performs no signal processing.
 
-Architecture: plain CNN, **380,306 parameters, 1.45 MB** as TFLite. No Bayesian layers, no
-borrowed weights.
+Architecture: plain CNN. `msc` 380,306 params / 1.45 MB TFLite; `med` 353,854 / 1.36 MB.
+No Bayesian layers, no borrowed weights.
 
 ## The numbers
 
@@ -27,61 +27,69 @@ borrowed weights.
 
 | Metric | Value |
 |---|---|
-| macro-F1 | **0.804** |
-| accuracy | 0.820 |
-| ***Aedes* recall** | **0.826** |
-| ***Aedes* precision** | **0.681** |
-| test set | 735 windows drawn from **523 held-out recordings** |
+| macro-F1 | **0.825** |
+| accuracy | 0.854 |
+| test set | **523 held-out recordings** |
+| model | 380,306 params, 1.45 MB TFLite |
 
-```
-                 predicted
-              aedes  not_aedes
-true aedes      194     41
-true not_aedes   91    409
-```
+Shipped config: `msc|w1.0|a0|s2` — standard width, SpecAugment **off**, chosen on validation
+(val 0.915) out of 18 candidates.
 
-**Say it like this:** *"It catches 83% of Aedes and cries wolf on about one call in three. For a
-health tool that is the right way round to be wrong — a miss is an unreported dengue risk, a
-false alarm is a wasted fogging run. And it is a dial, not a fixed property: the app requires
-70% confidence before it calls Aedes, and raising that trades sensitivity for precision."*
+**Say it like this:** *"0.83 macro-F1 on 523 recordings the model never saw. Across the 18
+configurations we trained, test scores ranged 0.56 to 0.83, so treat that as the top of a
+noisy range rather than a precise capability — with 89 independent Aedes recordings, it
+cannot be tighter than that."*
 
-**Do not say** "82% accurate" on its own. It is true and it hides the interesting part.
+**Do not say** "85% accurate" on its own, and do not quote 0.825 to three decimals.
 
 ### med — the abstain gate
 
-macro-F1 **0.941**. Mosquito recall 0.927, background recall 0.954.
-This is what makes the three abstain screens real rather than decorative.
+macro-F1 **0.964**, over 1000 held-out recordings. Shipped config `med|w0.75|a1|s0` —
+narrow, SpecAugment on. 353,854 params. This is what makes the abstain screens real rather
+than decorative.
 
 ### tri — bonus, not for presentation
 
-macro-F1 0.667, *Aedes* recall 0.769, precision 0.620. Better than expected, still well short
-of the binary. Mention only if asked directly, and only as "a three-species head we trained but
-would not ship".
+macro-F1 0.640 (a 3-model ensemble; the only task where ensembling won). Mention only if
+asked, and only as "a three-species head we trained but would not ship".
 
-### Run-to-run variance — know this before quoting a third decimal
+## What the sweep measured, beyond the headline
 
-The model was trained twice with identical code and data. Weight initialisation is not seeded,
-so the scores moved: **msc 0.840 → 0.804, med 0.924 → 0.941, tri 0.602 → 0.667.** Roughly
-±0.04 on macro-F1.
+53 runs: 3 widths x SpecAugment on/off x 3 seeds, per task, ~3.5 h on a Colab T4. Five findings
+worth having ready, because each shows a hypothesis being tested rather than assumed.
 
-The figures in this file are from the **second run — the one whose files actually shipped.**
-Treat two significant figures as real and the third as noise. If asked how confident the number
-is, "0.80 to 0.84 across runs" is the honest answer, and giving it unprompted is stronger than
-being caught with false precision. With 89 *Aedes* recordings, this much variance is expected.
+**1. The honest number came out HIGHER than the biased one.** The earlier 0.804 was inflated —
+early stopping restored the epoch with the best *test* accuracy, so we were selecting on the
+data we then reported. Removing that and adding a cosine learning-rate schedule netted **0.825**
+on a test set untouched until the final prediction. More rigorous and better.
 
-## Why these numbers are trustworthy
+**2. Test scores ranged 0.56–0.83 across `msc` configurations.** That spread, not the winning
+figure, is the real measure of how much 89 *Aedes* recordings can support.
 
-Two design decisions did the work, and both are worth a slide if there's room:
+**3. Validation systematically overestimates test** (val ~0.89 vs test ~0.70 on average).
+Selecting on validation was still correct, and here it picked the genuinely best model — but a
+validation score is not a capability claim.
 
-1. **Split by recording, not by clip.** Consecutive slices of one recording are nearly
-   identical. Putting them on both sides of the train/test split is the standard way to
-   manufacture a 99% that means nothing. 523 held-out **recordings** the model never saw.
-2. **Species training restricted to a single recording rig** (Tanzania, tascam, 44.1 kHz).
-   All the *Aedes* audio comes from that rig and so does most of the *Culex* and *Anopheles*,
-   so the model cannot score well by recognising the microphone instead of the mosquito.
+**4. SpecAugment helped `med` and not `msc`.** The winning `msc` config has it off. A
+reasonable hypothesis that the data declined.
 
-Training used the two augmentations from MosquitoSong+ (PLOS ONE 2024): noise mixing and
-wingbeat volume variation.
+**5. Ensembling lost on the tasks that matter.** Averaging the top 5 scored 0.71 on `msc` test
+against the single model's 0.83; it won only on `tri`. Individual runs vary so much that
+averaging pulled good models toward bad ones. The code only ships an ensemble when it beats the
+best single model on validation, so it correctly did not ship.
+
+## Two live caveats
+
+**The TFJS export failed** and the `tfjs_*` folders on Drive are **stale — from the August
+models, not these.** `tensorflowjs` breaks against NumPy 2 (`np.object` was removed in the
+NumPy 1.20 deprecation cycle). Only the in-browser demo depends on this; the `.tflite` files
+are current. **Do not present those folders as the shipped model.**
+
+**The tuned threshold is not the app's threshold.** `ensemble` reports the class boundary that
+maximises macro-F1 on validation (0.30 for `msc`). The app's 0.70 in `gating.ts` is an
+*abstention* threshold — max confidence below it means "not confident" — which is a different
+quantity. They are not comparable, and the tuning was worth +0.004 anyway. `gating.ts` is
+unchanged and should stay that way.
 
 ## band-SNR — measured, and deliberately not shipped
 
@@ -117,7 +125,7 @@ Useful for "what did you rule out?" questions.
 | Rejected | Why |
 |---|---|
 | **Oxford's released HumBugDB weights** | PyTorch ResNet/VGG using MC dropout. Reaching a phone needs PyTorch→ONNX→TF→TFLite, and TFLite treats dropout as an inference no-op and strips it — the Bayesian behaviour would vanish silently, with no error. |
-| **ImageNet-pretrained MobileNetV2** | Trained and **measured**: macro-F1 0.473 vs 0.840. It needs the spectrogram resized to 96×96, which destroys the frequency resolution that wingbeat identity consists of. Our from-scratch CNN is also 7× smaller. |
+| **ImageNet-pretrained MobileNetV2** | Trained and **measured**: macro-F1 0.473 vs 0.840 in the earlier run. It needs the spectrogram resized to 96×96, which destroys the frequency resolution that wingbeat identity consists of. Our from-scratch CNN is also 7× smaller. |
 | **Wingbeats dataset** (85,553 *Ae. aegypti* clips) | Recorded by optoelectronic sensors, not microphones. Training on it and reporting the result as phone performance would be a meaningless high number. Never needed — msc cleared the bar without it. |
 | **A sex (female/male) head** | HumBugDB has 22.2 min of female *Aedes* and 0.1 min of male. Nothing to train on. Worth mentioning: only females bite, so this is the head we *wanted* most. |
 
@@ -128,4 +136,4 @@ Useful for "what did you rule out?" questions.
   15 hr background, 36 species.
 - Augmentation recipe: **MosquitoSong+**, Mahidol, PLOS ONE 2024 (paper only — no code or
   weights used).
-- Training: 16 min on a Colab free T4. All code in [`ml/dengar.py`](../ml/dengar.py).
+- Training: 53 runs, ~3.5 h on a Colab free T4, hard-capped. All code in [`ml/dengar.py`](../ml/dengar.py).
