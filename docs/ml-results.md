@@ -35,17 +35,48 @@ No Bayesian layers, no borrowed weights.
 Shipped config: `msc|w1.0|a0|s2` — standard width, SpecAugment **off**, chosen on validation
 (val 0.915) out of 18 candidates.
 
-**Say it like this:** *"0.83 macro-F1 on 523 recordings the model never saw. Across the 18
-configurations we trained, test scores ranged 0.56 to 0.83, so treat that as the top of a
-noisy range rather than a precise capability — with 89 independent Aedes recordings, it
-cannot be tighter than that."*
+```
+                 predicted
+              aedes  not_aedes
+true aedes      164     71        precision 0.820, recall 0.698
+true not_aedes   36    464        precision 0.867, recall 0.928
+```
+
+**The error direction REVERSED from the earlier model, and this matters more than the score.**
+The old one over-called *Aedes* (recall 0.83-0.96, precision 0.68) — it rarely missed and often
+cried wolf. This one is the opposite: **precision 0.820, recall 0.698.** It is right when it
+speaks and misses roughly 30% of *Aedes*.
+
+Any claim of the form "rarely misses a mosquito" or "catches 96%" is **false for the shipped
+model** and must not appear on a slide or in narration.
+
+**Say it like this:** *"82% of its Aedes calls are correct, and it misses about 30%. For a
+fogging dispatch that is the right default — you do not send trucks to nothing. We measured the
+other operating point too: lower the threshold and it trades precision for recall, which is what
+a health authority would want during an outbreak. Same model, different dial."*
+
+That claim is backed: macro-F1 at the validation-optimal lower threshold is 0.8295, against
+0.8253 at the default. The dial is real and measured, not asserted.
+
+**Also true, and worth volunteering:** across the 18 configurations trained, test macro-F1
+ranged 0.56 to 0.83. With 89 independent *Aedes* recordings the estimate cannot be tighter
+than that. Quote two significant figures.
 
 **Do not say** "85% accurate" on its own, and do not quote 0.825 to three decimals.
 
 ### med — the abstain gate
 
 macro-F1 **0.964**, over 1000 held-out recordings. Shipped config `med|w0.75|a1|s0` —
-narrow, SpecAugment on. 353,854 params. This is what makes the abstain screens real rather
+narrow, SpecAugment on. 353,854 params. Balanced both ways: mosquito recall 0.958, background
+recall 0.970.
+
+```
+                 predicted
+             mosquito  none
+true mosquito    475    21
+true none         15   489
+```
+ This is what makes the abstain screens real rather
 than decorative.
 
 ### tri — bonus, not for presentation

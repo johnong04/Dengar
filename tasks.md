@@ -38,25 +38,14 @@ Gate 2 closed: warmth revision approved (hues to refine), officer = e (home) + d
       was recycled; the run that actually shipped scored msc 0.804 / med 0.941 / tri 0.667.
       `docs/ml-results.md` is the single citable source and it carries the shipped run.
 
-#### The on-camera numbers — msc, the product model (shipped run)
+#### The on-camera numbers — SUPERSEDED, see docs/ml-results.md
 
-```
-                 predicted
-              aedes  not_aedes
-true aedes      194     41        recall 0.826, precision 0.681
-true not_aedes   91    409        recall 0.818, precision 0.909
-```
+The confusion matrix that lived here described a model that no longer ships, and its error
+direction was the OPPOSITE of the current one. `docs/ml-results.md` is the single citable
+source; anything quoted from memory of this block will be wrong.
 
-**Recall 0.826, precision 0.681** — macro-F1 0.804 over 523 held-out recordings. It rarely
-misses an *Aedes* and cries wolf on about one call in three. Right way round for a health
-tool, and **a dial not a property**: `gating.ts` needs MSC ≥ 0.70 to call *Aedes*, and
-raising that trades recall for precision. Say "we chose which way to be wrong".
-
-med macro-F1 0.941 · tri 0.667 (*Aedes* recall 0.769 — still keep it out of the narration).
-Run-to-run spread is roughly ±0.04, so quote two significant figures, not three.
-
-Caveat that must be said out loud: tested on HumBugDB's own tascam recordings, **not**
-phone-mic audio. Abuzz would be the test that proves phone transfer and it is not run.
+Shipped model, 53-run sweep, 2026-09-04: **msc macro-F1 0.825** (precision 0.820, recall
+0.698 on *Aedes*, 523 held-out recordings) · **med 0.964** · tri 0.640.
 
 - [x] M9 **Methodology fix — the shipped numbers were optimistically biased.** `cmd_train`
       passed the test set as `validation_data` and let EarlyStopping restore the epoch with
