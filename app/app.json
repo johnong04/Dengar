@@ -44,7 +44,13 @@
           "enableAndroidGpuLibraries": true
         }
       ],
-      "@siteed/audio-studio"
+      "@siteed/audio-studio",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "PASTE_ANDROID_MAPS_API_KEY_HERE"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
