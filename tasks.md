@@ -91,7 +91,9 @@ alongside so the gating cannot hide anything.
 
 Not doing: Oxford's released weights (PyTorch ResNet/VGG with MC-dropout sampling — a four-step
 conversion chain, and TFLite strips dropout silently, so the Bayesian part would vanish without
-an error). Abuzz as a scored eval set (Dryad, manual, test-only per specs.md).
+an error). ~~Abuzz as a scored eval set~~ **reversed 2026-09-18 — see the phone-mic
+validation run above.** It was parked because the download looked manual and time was short;
+the Dryad API makes it scriptable, and the phone-mic gap is worth more than the reason to skip.
 No sex head — HumBugDB has 22.2 min of female *Aedes* and 0.1 min of male.
 
 ## Later (not this run)
