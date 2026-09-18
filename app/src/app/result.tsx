@@ -25,9 +25,20 @@ type Fill = { value: number; floor: number };
 
 type ReadoutRow = {
   label: string;
-  /** Mono value in ink — the number the instrument stands behind. */
+  /** The value in ink — the reading the instrument stands behind. Mono unless `word`. */
   value: string;
-  /** Mono suffix in muted — floor / qualifier. */
+  /**
+   * This value is a WORD, not a figure — a taxon, a sex, yes/no. Set it and the value renders in
+   * Plex Sans. design-system.md §Type restricts mono to numbers and machine strings, and a species
+   * name set in mono is the readout reading as a log dump instead of as an answer (plan 23
+   * §diagnosis 1).
+   */
+  word?: boolean;
+  /**
+   * Qualifier in muted — a floor, a confidence, a state. Always Plex Sans: it is a parenthetical
+   * next to the value, never the readout itself, and it is the one place where figures and words
+   * are genuinely mixed row to row.
+   */
   suffix?: string;
   /** Bumps the value one scale step (17px, medium) — the row that explains this verdict. */
   prominent?: boolean;
@@ -55,6 +66,7 @@ const fillOf = (n: number | undefined, floor: number): Fill | undefined =>
 const audioRow = (c: Copy): ReadoutRow => ({
   label: c.result.audioKept,
   value: c.result.audioKeptValue,
+  word: true,
   suffix: c.result.audioKeptSuffix,
 });
 
@@ -163,18 +175,21 @@ function detailRows(detail: SpeciesDetail | undefined, c: Copy): ReadoutRow[] {
     rows.push({
       label: c.result.species,
       value: detail.taxon.name,
+      word: true,
       suffix: `· ${score(detail.taxon.confidence)}`,
     });
   if (detail?.sex?.value && typeof detail.sex.confidence === 'number')
     rows.push({
       label: c.result.sex,
       value: c.result.sexValue(detail.sex.value),
+      word: true,
       suffix: `· ${score(detail.sex.confidence)}`,
     });
   if (detail?.gravid && typeof detail.gravid.confidence === 'number')
     rows.push({
       label: c.result.gravid,
       value: detail.gravid.value ? c.common.yes : c.common.no,
+      word: true,
       suffix: `· ${score(detail.gravid.confidence)}`,
     });
   return rows;
@@ -225,14 +240,18 @@ function Readouts({ rows }: { rows: ReadoutRow[] }) {
             <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
             <Text
               className={
-                row.prominent
-                  ? 'font-mono-medium text-[17px] text-ink'
-                  : 'font-mono text-[15px] text-ink'
+                row.word
+                  ? row.prominent
+                    ? 'font-plex-medium text-[17px] text-ink'
+                    : 'font-plex text-[15px] text-ink'
+                  : row.prominent
+                    ? 'font-mono-medium text-[17px] text-ink'
+                    : 'font-mono text-[15px] text-ink'
               }
             >
               {row.value}{' '}
               {row.suffix ? (
-                <Text className="font-mono text-[15px] text-muted">{row.suffix}</Text>
+                <Text className="font-plex text-[15px] text-muted">{row.suffix}</Text>
               ) : null}
             </Text>
           </View>
@@ -243,13 +262,13 @@ function Readouts({ rows }: { rows: ReadoutRow[] }) {
   );
 }
 
-/** The promoted privacy claim: cool trust tint, mono tag, prose in ink. Abstain screens only. */
+/** The promoted privacy claim: cool trust tint, tag, prose in ink. Abstain screens only. */
 function TrustBlock({ c }: { c: Copy }) {
   return (
     <View className="mt-6 rounded-block bg-tint-trust px-5 py-4">
       <View className="flex-row items-center gap-2">
         <View className="h-1.5 w-1.5 rounded-full bg-ok-bright" />
-        <Text className="font-mono text-[12px] text-tint-trust-ink">{c.result.trustTag}</Text>
+        <Text className="font-plex-medium text-[12px] text-tint-trust-ink">{c.result.trustTag}</Text>
       </View>
       <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">{c.result.trustLine}</Text>
     </View>
@@ -371,7 +390,7 @@ function Detected({
                   {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
                   <View className="mt-8 flex-row items-baseline gap-3">
                     <Text className="font-mono-medium text-[30px] text-warm-white">{pct}%</Text>
-                    <Text className="font-mono text-[13px] text-verdict-aedes-soft">{context}</Text>
+                    <Text className="font-plex text-[15px] text-verdict-aedes-soft">{context}</Text>
                   </View>
                   <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
                     <View
@@ -393,9 +412,15 @@ function Detected({
                           <Text className="font-plex text-[15px] text-verdict-aedes-soft">
                             {row.label}
                           </Text>
-                          <Text className="font-mono text-[15px] text-warm-white">
+                          <Text
+                            className={
+                              row.word
+                                ? 'font-plex-medium text-[15px] text-warm-white'
+                                : 'font-mono text-[15px] text-warm-white'
+                            }
+                          >
                             {row.value}{' '}
-                            <Text className="font-mono text-[15px] text-verdict-aedes-soft">
+                            <Text className="font-plex text-[15px] text-verdict-aedes-soft">
                               {row.suffix}
                             </Text>
                           </Text>
@@ -406,7 +431,7 @@ function Detected({
 
                   {/* the stakes, raised */}
                   <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
-                    <Text className="font-mono text-[12px] text-verdict-aedes-soft">
+                    <Text className="font-plex-medium text-[13px] uppercase tracking-[0.08em] text-verdict-aedes-soft">
                       {c.result.whyThisMatters}
                     </Text>
                     <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">

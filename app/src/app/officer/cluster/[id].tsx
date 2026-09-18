@@ -249,7 +249,7 @@ export default function ClusterDetail() {
           <Text className="font-plex-semibold text-[17px] text-o-ink">{area.name}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-              <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
+              <Text className="font-plex-medium text-[10px] text-o-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -438,7 +438,7 @@ export default function ClusterDetail() {
                 </View>
               </View>
               <View className="h-4 w-[1px] bg-o-line" />
-              <Text className="font-mono text-[10px] text-o-muted">{MAP_ATTRIBUTION}</Text>
+              <Text className="font-plex text-[10px] text-o-muted">{MAP_ATTRIBUTION}</Text>
             </View>
           </>
         ) : null}

@@ -153,7 +153,7 @@ export default function Capture() {
               <View
                 className={`h-2 w-2 rounded-full ${listening ? 'bg-primary' : analyzing ? 'bg-muted' : 'bg-ok-bright'}`}
               />
-              <Text className="font-mono text-[12px] text-tint-trust-ink">{micLabel}</Text>
+              <Text className="font-plex-medium text-[12px] text-tint-trust-ink">{micLabel}</Text>
             </View>
           </View>
         </View>
@@ -189,7 +189,7 @@ export default function Capture() {
             )}
             {analyzing && (
               <Animated.View entering={enter} className="items-center">
-                <Text className="font-mono text-[13px] text-bg">{c.capture.analyzing}</Text>
+                <Text className="font-plex-medium text-[13px] text-bg">{c.capture.analyzing}</Text>
               </Animated.View>
             )}
           </PulseRings>
@@ -202,13 +202,17 @@ export default function Capture() {
               <Text className="mt-7 text-center font-plex-semibold text-[21px] leading-7 text-ink">
                 {c.capture.headline}
               </Text>
-              <Text className="mt-2 text-center font-mono text-[12px] text-muted">
+              {/* Sans, not mono. design-system.md §Type restricts mono to "numbers and machine
+                  strings"; a line that is mostly WORDS is prose even when it quotes figures, and
+                  setting it in mono is the single strongest "data-science tool, not an app" signal
+                  in the app (plan 23 §diagnosis 1). Bare figures below keep their mono. */}
+              <Text className="mt-2 text-center font-plex text-[13px] text-muted">
                 {c.capture.guidanceSpec}
               </Text>
               {/* The tally belongs to the instrument, not to the foot. Pinned at the bottom it left
                   a ~130px void between the spec line and itself; here the screen reads as one
                   centred group with the shell framing it. */}
-              <Text className="mt-5 text-center font-mono text-[13px] text-muted">{tally}</Text>
+              <Text className="mt-5 text-center font-plex text-[13px] text-muted">{tally}</Text>
             </Animated.View>
           )}
           {listening && (

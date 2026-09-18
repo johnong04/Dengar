@@ -55,7 +55,13 @@ function detailInline(d: Detection, c: Copy): string | null {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-type ReadoutRow = { label: string; value: string; suffix?: string };
+/**
+ * `word` marks a value that is a WORD rather than a figure — a taxon, a sex, yes/no, a sync state.
+ * It renders in Plex Sans; figures and timestamps keep mono. design-system.md §Type restricts mono
+ * to numbers and machine strings, and a log whose every value is mono reads as a dump, not a record
+ * (plan 23 §diagnosis 1). The suffix is always Sans — it is a parenthetical, not the readout.
+ */
+type ReadoutRow = { label: string; value: string; word?: boolean; suffix?: string };
 
 /**
  * What the collapsed row does NOT already say. Confidence is deliberately absent: the collapsed row
@@ -67,24 +73,28 @@ function readoutRows(d: Detection, c: Copy): ReadoutRow[] {
     rows.push({
       label: c.history.species,
       value: d.detail.taxon.name,
+      word: true,
       suffix: `· ${score(d.detail.taxon.confidence)}`,
     });
   if (d.detail?.sex?.value && typeof d.detail.sex.confidence === 'number')
     rows.push({
       label: c.history.sex,
       value: c.result.sexValue(d.detail.sex.value),
+      word: true,
       suffix: `· ${score(d.detail.sex.confidence)}`,
     });
   if (d.detail?.gravid && typeof d.detail.gravid.confidence === 'number')
     rows.push({
       label: c.history.gravid,
       value: d.detail.gravid.value ? c.common.yes : c.common.no,
+      word: true,
       suffix: `· ${score(d.detail.gravid.confidence)}`,
     });
   rows.push({ label: c.history.recordedRow, value: fullStamp(d.at, c) });
   rows.push({
     label: c.history.sync,
     value: d.synced ? c.history.synced : c.history.queuedOffline,
+    word: true,
   });
   return rows;
 }
@@ -130,7 +140,7 @@ function Row({
             </Text>
             {!detection.synced && (
               <View className="ml-2 rounded-pill bg-surface-raised px-2 py-1">
-                <Text className="font-mono text-[12px] text-caution">{c.history.queued}</Text>
+                <Text className="font-plex-medium text-[12px] text-caution">{c.history.queued}</Text>
               </View>
             )}
           </View>
@@ -158,10 +168,14 @@ function Row({
                 }`}
               >
                 <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
-                <Text className="font-mono text-[15px] text-ink">
+                <Text
+                  className={
+                    row.word ? 'font-plex-medium text-[15px] text-ink' : 'font-mono text-[15px] text-ink'
+                  }
+                >
                   {row.value}
                   {row.suffix ? (
-                    <Text className="font-mono text-[15px] text-muted"> {row.suffix}</Text>
+                    <Text className="font-plex text-[15px] text-muted"> {row.suffix}</Text>
                   ) : null}
                 </Text>
               </View>
@@ -199,7 +213,7 @@ export default function History() {
           </Pressable>
           <View className="flex-row items-center gap-2">
             <SyncChip />
-            <Text className="font-mono text-[12px] text-muted">
+            <Text className="font-plex text-[13px] text-muted">
               {c.history.recorded(ordered.length)}
             </Text>
           </View>

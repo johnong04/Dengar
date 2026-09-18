@@ -228,7 +228,7 @@ export default function Area() {
           <Text className="font-plex-semibold text-[17px] text-ink">{c.area.title}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-surface px-2 py-[2px]">
-              <Text className="font-mono text-[12px] text-muted">{c.common.simulated}</Text>
+              <Text className="font-plex-medium text-[12px] text-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -249,7 +249,9 @@ export default function Area() {
           <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">
             {c.area.answer(activeCluster.windowHours)}
           </Text>
-          <Text className="mt-3 font-mono text-[13px] text-muted">
+          {/* Sans. Named in plan 23 §diagnosis 1 as the worst offender on this screen: a sentence
+              of words that happens to quote three figures is prose, not a machine string. */}
+          <Text className="mt-3 font-plex text-[13px] text-muted">
             {c.area.tally(area.count, activeCluster.windowHours, activeCluster.rainMm)}
           </Text>
         </View>
@@ -315,10 +317,10 @@ export default function Area() {
           {/* Stacked, not a justify-between row: at 390 px both strings wrap mid-phrase and the
               licence line breaks across two ragged columns. Two short lines always fit. */}
           <View className="px-5 py-3">
-            <Text className="font-mono text-[12px] text-muted">
+            <Text className="font-plex text-[12px] text-muted">
               {c.area.shading(activeCluster.windowHours)}
             </Text>
-            <Text className="mt-1 font-mono text-[12px] text-muted">{MAP_ATTRIBUTION}</Text>
+            <Text className="mt-1 font-plex text-[12px] text-muted">{MAP_ATTRIBUTION}</Text>
           </View>
         </View>
 
@@ -328,7 +330,7 @@ export default function Area() {
           <Text className="font-plex text-[16px] leading-6 text-ink">
             {c.area.privacyBody(BLOCK_M)}
           </Text>
-          <Text className="mt-2 font-mono text-[12px] text-tint-trust-ink">
+          <Text className="mt-2 font-plex-medium text-[13px] text-tint-trust-ink">
             {c.area.privacySpec}
           </Text>
         </View>
@@ -350,7 +352,7 @@ export default function Area() {
                   <Text className="mt-1 font-plex text-[13px] leading-5 text-muted">{p.why}</Text>
                 ) : null}
               </View>
-              <Text className="mt-[3px] font-mono text-[13px] text-muted">{p.when}</Text>
+              <Text className="mt-[3px] font-plex-medium text-[13px] text-muted">{p.when}</Text>
             </View>
           ))}
         </View>

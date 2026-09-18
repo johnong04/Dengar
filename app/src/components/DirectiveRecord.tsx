@@ -49,7 +49,7 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
             ? c.officer.overdue
             : c.officer.remaining(left.hours, String(left.minutes).padStart(2, '0'))}
         </Text>
-        <Text className="font-mono text-[11px] text-o-muted">{c.officer.fogBy(FOG_BY_STAMP)}</Text>
+        <Text className="font-plex text-[12px] text-o-muted">{c.officer.fogBy(FOG_BY_STAMP)}</Text>
       </View>
       <View className="mt-2 h-[3px] w-full overflow-hidden rounded-pill bg-o-line">
         <View
@@ -57,7 +57,7 @@ export function DirectiveRecord({ ack }: { ack: Acknowledgement }) {
           style={{ width: `${Math.max(1.5, left.elapsed * 100)}%` }}
         />
       </View>
-      <Text className="mt-1.5 font-mono text-[10px] text-o-muted">
+      <Text className="mt-1.5 font-plex text-[11px] text-o-muted">
         {c.officer.ofWindow(FOG_WINDOW_H)}
       </Text>
 

@@ -69,7 +69,7 @@ export default function RoadmapImpact() {
         {/* "footprint", not "area covered": the caption below already has to walk back a coverage
             claim, and a label that does not make one is better than a caption that undoes it. */}
         <FigureRow label={c.roadmap.mapFootprint} figure={DISTRICT_EXTENT} />
-        <Text className="font-mono text-[12px] text-muted">{c.roadmap.boundsNote}</Text>
+        <Text className="font-plex text-[13px] text-muted">{c.roadmap.boundsNote}</Text>
         <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">
           {c.roadmap.extentNote}
         </Text>
@@ -93,7 +93,7 @@ export default function RoadmapImpact() {
         <View className="flex-row items-start justify-between border-t border-line py-3">
           <View className="shrink pr-4">
             <Text className="font-plex text-[16px] leading-6 text-ink">{c.roadmap.daysLost}</Text>
-            <Text className="mt-1 font-mono text-[12px] text-muted">{c.roadmap.workSchool}</Text>
+            <Text className="mt-1 font-plex text-[13px] text-muted">{c.roadmap.workSchool}</Text>
           </View>
           <View className="items-end">
             <Text className="font-mono-medium text-[17px] text-ink">
@@ -113,14 +113,14 @@ export default function RoadmapImpact() {
           <Text className="shrink pr-4 font-plex-medium text-[16px] leading-6 text-ink">
             {c.roadmap.casesAverted}
           </Text>
-          <Text className="font-mono text-[17px] text-muted">{c.roadmap.notShown}</Text>
+          <Text className="font-plex text-[17px] text-muted">{c.roadmap.notShown}</Text>
         </View>
         <Text className="font-plex text-[16px] leading-6 text-muted">
           {c.roadmap.casesAvertedReason}
         </Text>
       </Block>
 
-      <Text className="mt-5 font-mono text-[12px] leading-5 text-muted">
+      <Text className="mt-5 font-plex text-[13px] leading-5 text-muted">
         {c.roadmap.tagFootnote}
       </Text>
     </RoadmapScreen>

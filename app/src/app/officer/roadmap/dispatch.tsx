@@ -67,7 +67,7 @@ function BlockCell({ b }: { b: BlockTarget }) {
           </View>
         ) : null}
       </View>
-      <Text className={`font-mono text-[11px] ${target ? 'text-o-bg' : 'text-o-muted'}`}>
+      <Text className={`font-plex text-[11px] ${target ? 'text-o-bg' : 'text-o-muted'}`}>
         {c.officer.det(b.detections)}
       </Text>
     </View>
@@ -90,7 +90,7 @@ function FootprintBar({
     <View className="mt-2.5">
       <View className="flex-row items-baseline justify-between">
         <Text className="font-plex-medium text-[13px] text-o-ink">{name}</Text>
-        <Text className="font-mono text-[11px] text-o-muted">{detail}</Text>
+        <Text className="font-plex text-[12px] text-o-muted">{detail}</Text>
       </View>
       {/* Height goes on `style` so the track and the fill are driven by one constant — the fill's
           width is computed at runtime, and a class-set track height could drift from it silently.
@@ -208,7 +208,7 @@ export default function RoadmapDispatch() {
             share={economics.footprintShare}
             tone="target"
           />
-          <Text className="mt-2 font-mono text-[11px] text-o-muted">
+          <Text className="mt-2 font-plex text-[12px] text-o-muted">
             {economics.targetKm2.toFixed(3)} ÷ {economics.totalKm2.toFixed(3)} ={' '}
             {(economics.footprintShare * 100).toFixed(1)}% {c.officer.ofTheGround}
           </Text>
@@ -226,7 +226,7 @@ export default function RoadmapDispatch() {
                 {c.officer.lowerThanBlanket}
               </Text>
             </View>
-            <Text className="mt-1 font-mono text-[11px] text-o-muted">
+            <Text className="mt-1 font-plex text-[12px] text-o-muted">
               1 ÷ {(economics.footprintShare * 100).toFixed(1)}% = {economics.costFactor.toFixed(2)}
             </Text>
             <Text className="mt-2 font-plex text-[13px] text-o-muted">

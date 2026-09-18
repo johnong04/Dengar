@@ -95,7 +95,7 @@ function PayloadRow({
         {/* `muted`, not `tint-trust-ink`: the mint token is documented as a label ON `tint-trust`
             (design-system.md §Tokens), and this block sits on `surface`. It is also a comparison,
             not a reassurance — colouring "would leave" mint would say the wrong thing. */}
-        <Text className="font-mono text-[12px] uppercase text-muted">{direction}</Text>
+        <Text className="font-plex-medium text-[12px] uppercase tracking-[1.2px] text-muted">{direction}</Text>
         <Text className="mt-1 font-plex text-[16px] leading-6 text-ink">{what}</Text>
         <Text className="mt-1 font-mono text-[12px] text-muted">{arithmetic}</Text>
       </View>
@@ -142,7 +142,7 @@ export default function RoadmapPrivacy() {
       <Block heading={c.roadmap.onDeviceTraining} tint="trust">
         <View className="flex-row items-center gap-2 py-1">
           <TrainingDot still={reducedMotion} />
-          <Text className="font-mono text-[13px] text-tint-trust-ink">
+          <Text className="font-plex text-[13px] text-tint-trust-ink">
             {c.roadmap.trainingWaiting}
           </Text>
         </View>
@@ -168,7 +168,7 @@ export default function RoadmapPrivacy() {
             <Text className="font-mono text-[15px] text-muted">{UPDATE_SIZE.value}</Text>
           </View>
         ))}
-        <Text className="mt-2 font-mono text-[12px] text-muted">{c.roadmap.seededRounds}</Text>
+        <Text className="mt-2 font-plex text-[13px] text-muted">{c.roadmap.seededRounds}</Text>
       </Block>
     </RoadmapScreen>
   );

@@ -23,7 +23,7 @@ export function SyncChip() {
 
   return (
     <View className="rounded-pill bg-surface-raised px-3 py-1">
-      <Text className="font-mono text-[12px] text-muted">{label}</Text>
+      <Text className="font-plex-medium text-[12px] text-muted">{label}</Text>
     </View>
   );
 }

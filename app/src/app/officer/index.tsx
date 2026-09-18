@@ -65,7 +65,7 @@ function LegendKey({ label, swatch }: { label: string; swatch: React.ReactNode }
   return (
     <View className="flex-row items-center gap-1.5">
       {swatch}
-      <Text className="font-mono text-[10px] text-o-muted">{label}</Text>
+      <Text className="font-plex text-[11px] text-o-muted">{label}</Text>
     </View>
   );
 }
@@ -126,7 +126,7 @@ export default function OfficerHome() {
             <Text className="font-plex-semibold text-[17px] text-o-ink">{district.name}</Text>
             {district.simulated ? (
               <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-                <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
+                <Text className="font-plex-medium text-[10px] text-o-muted">{c.common.simulated}</Text>
               </View>
             ) : null}
           </View>
@@ -171,8 +171,9 @@ export default function OfficerHome() {
               <Text className="font-plex-semibold text-[17px] text-o-bg">
                 {c.officer.fogWithin48}
               </Text>
-              <Text numberOfLines={1} className="mt-[3px] font-mono text-[11px] text-o-surface">
-                {activeCluster.area} · {activeCluster.blocks}
+              <Text numberOfLines={1} className="mt-[3px] font-plex text-[13px] text-o-surface">
+                {activeCluster.area}{' '}
+                <Text className="font-mono text-[12px]">{activeCluster.blocks}</Text>
               </Text>
             </View>
             <Pressable
@@ -313,7 +314,7 @@ export default function OfficerHome() {
               <Text className="font-mono text-[10px] text-o-muted">+{trend.leadDays.to} d</Text>
             </View>
           </View>
-          <Text className="mt-1 text-right font-mono text-[10px] text-o-muted">
+          <Text className="mt-1 text-right font-plex text-[11px] text-o-muted">
             {c.officer.projectedNotMeasured}
           </Text>
         </View>

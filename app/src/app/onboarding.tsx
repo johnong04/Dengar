@@ -137,7 +137,7 @@ export default function Onboarding() {
         <Animated.View key={beat} entering={enter} style={{ flex: 1 }}>
           <View className="mt-12">
             {kicker && (
-              <Text className="mb-3 font-mono text-[12px] uppercase tracking-widest text-muted">
+              <Text className="mb-3 font-plex-medium text-[12px] uppercase tracking-[1.2px] text-muted">
                 {kicker}
               </Text>
             )}
@@ -147,7 +147,7 @@ export default function Onboarding() {
               <View className="mt-6 rounded-block bg-tint-trust px-5 py-4">
                 <View className="flex-row items-center gap-2">
                   <View className="h-1.5 w-1.5 rounded-full bg-ok-bright" />
-                  <Text className="font-mono text-[12px] text-tint-trust-ink">{trustTag}</Text>
+                  <Text className="font-plex-medium text-[12px] text-tint-trust-ink">{trustTag}</Text>
                 </View>
                 {paragraphs.map((p) => (
                   <Text key={p} className="mt-2 font-plex text-[16px] leading-6 text-ink">

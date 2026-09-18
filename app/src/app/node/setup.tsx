@@ -58,7 +58,7 @@ export default function NodeSetup() {
           contentContainerStyle={{ paddingBottom: 0 }}
         >
           <Animated.View entering={enter}>
-            <Text className="mt-3 font-mono text-[12px] uppercase tracking-widest text-muted">
+            <Text className="mt-3 font-plex-medium text-[12px] uppercase tracking-[1.2px] text-muted">
               {c.node.kicker}
             </Text>
             <Text className="mt-2 font-plex-bold text-[30px] leading-9 text-ink">
@@ -81,7 +81,7 @@ export default function NodeSetup() {
                   </View>
                 </View>
               ))}
-              <Text className="mt-2 font-mono text-[12px] text-tint-guide-mono">
+              <Text className="mt-2 font-plex text-[13px] text-tint-guide-mono">
                 {c.node.placementSpec}
               </Text>
             </View>
@@ -93,7 +93,7 @@ export default function NodeSetup() {
             <View className="mt-2 rounded-block bg-tint-trust px-5 py-4">
               <View className="flex-row items-center gap-2">
                 <View className="h-1.5 w-1.5 rounded-full bg-ok-bright" />
-                <Text className="font-mono text-[12px] text-tint-trust-ink">
+                <Text className="font-plex-medium text-[12px] text-tint-trust-ink">
                   {c.common.privacy}
                 </Text>
               </View>

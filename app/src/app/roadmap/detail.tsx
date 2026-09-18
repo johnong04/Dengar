@@ -89,7 +89,7 @@ function HeadRow({ head, first }: { head: Head; first: boolean }) {
       <Text className="mt-1 font-plex-medium text-[16px] text-ink">{head.value}</Text>
       <ConfidenceBar confidence={head.confidence} />
       <Text className="mt-2 font-plex text-[15px] leading-6 text-muted">{head.why}</Text>
-      <Text className="mt-1 font-mono text-[12px] text-muted">{head.status}</Text>
+      <Text className="mt-1 font-plex text-[13px] text-muted">{head.status}</Text>
     </View>
   );
 }
@@ -109,7 +109,7 @@ export default function RoadmapDetail() {
           {/* the vector's mark — same 8 px dot the history log uses, the only red here */}
           <View className="h-2 w-2 rounded-full bg-alert" />
           <Text className="font-plex-semibold text-[20px] text-ink">{c.history.aedes}</Text>
-          <Text className="font-mono text-[13px] text-muted">{c.roadmap.verdict('0.91')}</Text>
+          <Text className="font-plex text-[13px] text-muted">{c.roadmap.verdict('0.91')}</Text>
         </View>
         {HEADS.map((h, i) => (
           <HeadRow key={h.label} head={h} first={i === 0} />

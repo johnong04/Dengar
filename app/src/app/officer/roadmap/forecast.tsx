@@ -59,7 +59,7 @@ function LegendKey({ label, swatch }: { label: string; swatch: React.ReactNode }
   return (
     <View className="flex-row items-center gap-1.5">
       {swatch}
-      <Text className="font-mono text-[10px] text-o-muted">{label}</Text>
+      <Text className="font-plex text-[11px] text-o-muted">{label}</Text>
     </View>
   );
 }
@@ -70,7 +70,7 @@ function EdgeRow({ name, assumption, math }: { name: string; assumption: string;
     <View className="border-t border-o-line py-2.5">
       <View className="flex-row items-baseline justify-between gap-3">
         <Text className="font-plex-medium text-[13px] text-o-ink">{name}</Text>
-        <Text className="shrink font-mono text-[11px] text-o-muted" numberOfLines={1}>
+        <Text className="shrink font-plex text-[12px] text-o-muted" numberOfLines={1}>
           {math}
         </Text>
       </View>
@@ -224,7 +224,7 @@ export default function RoadmapForecast() {
             </Text>
             <Text className="font-mono-medium text-[10px] text-o-ink">0</Text>
             <View className="flex-row justify-between" style={{ flex: FUTURE }}>
-              <Text className="pl-1 font-mono text-[10px] text-o-muted">{c.officer.today}</Text>
+              <Text className="pl-1 font-plex text-[11px] text-o-muted">{c.officer.today}</Text>
               <Text className="font-mono text-[10px] text-o-muted">+{forecast.horizonDays} d</Text>
             </View>
           </View>

@@ -105,7 +105,7 @@ function StateChip({ state }: { state: DirectiveState }) {
     state === 'directive' ? 'text-o-bg' : state === 'acknowledged' ? 'text-o-ok' : 'text-o-muted';
   return (
     <View className={`rounded-pill px-2 py-[2px] ${skin}`}>
-      <Text className={`font-mono text-[10px] ${ink}`}>{stateLabel(state, c)}</Text>
+      <Text className={`font-plex-medium text-[10px] ${ink}`}>{stateLabel(state, c)}</Text>
     </View>
   );
 }
@@ -142,7 +142,7 @@ function LogEntry({
           <Text className="font-plex-medium text-[13px] text-o-ink">{label}</Text>
           <Text className="font-mono text-[11px] text-o-muted">{stamp}</Text>
         </View>
-        <Text className="mt-[2px] font-mono text-[11px] text-o-muted">{detail}</Text>
+        <Text className="mt-[2px] font-plex text-[12px] text-o-muted">{detail}</Text>
       </View>
     </View>
   );
@@ -174,7 +174,7 @@ export default function OfficerAlerts() {
           <Text className="font-plex-semibold text-[17px] text-o-ink">{c.officer.alertsTitle}</Text>
           {district.simulated ? (
             <View className="rounded-pill bg-o-surface px-2 py-[2px]">
-              <Text className="font-mono text-[10px] text-o-muted">{c.common.simulated}</Text>
+              <Text className="font-plex-medium text-[10px] text-o-muted">{c.common.simulated}</Text>
             </View>
           ) : null}
         </View>
@@ -198,7 +198,7 @@ export default function OfficerAlerts() {
               <Text className={`font-plex-medium text-[13px] ${on ? 'text-o-bg' : 'text-o-muted'}`}>
                 {f.label}
               </Text>
-              <Text className={`font-mono text-[11px] ${on ? 'text-o-surface' : 'text-o-muted'}`}>
+              <Text className={`font-plex-medium text-[12px] ${on ? 'text-o-surface' : 'text-o-muted'}`}>
                 {n}
               </Text>
             </Pressable>
@@ -258,13 +258,13 @@ export default function OfficerAlerts() {
           // emptiness IS the outcome. Reported plainly — never a failure, never a celebration.
           <View className="px-5 pt-6">
             <Text className="font-plex-medium text-[15px] text-o-ink">{c.officer.emptyFilter}</Text>
-            <Text className="mt-1 font-mono text-[11px] text-o-muted">
+            <Text className="mt-1 font-plex text-[13px] text-o-muted">
               {filter === 'active' ? c.officer.emptyActive : c.officer.emptyAcknowledged}
             </Text>
           </View>
         ) : null}
 
-        <Text className="px-5 pt-3 font-mono text-[10px] text-o-muted">
+        <Text className="px-5 pt-3 font-plex text-[11px] text-o-muted">
           {c.officer.feedFoot(rows.length, activeCluster.windowHours)}
         </Text>
 

@@ -24,7 +24,7 @@ export function RoadmapMark() {
   const c = useCopy();
   return (
     <View className="rounded-pill bg-surface px-3 py-1">
-      <Text className="font-mono text-[12px] text-muted">{c.roadmap.mark}</Text>
+      <Text className="font-plex-medium text-[12px] text-muted">{c.roadmap.mark}</Text>
     </View>
   );
 }
@@ -34,7 +34,7 @@ export function SimulatedTag() {
   const c = useCopy();
   return (
     <View className="rounded-pill bg-surface-raised px-2 py-1">
-      <Text className="font-mono text-[12px] text-muted">{c.common.simulated}</Text>
+      <Text className="font-plex-medium text-[12px] text-muted">{c.common.simulated}</Text>
     </View>
   );
 }
@@ -169,7 +169,7 @@ export function Block({
       {(heading || tag) && (
         <View className="mb-1 flex-row items-center justify-between">
           {heading ? (
-            <Text className={`font-mono text-[12px] uppercase ${headingInk}`}>{heading}</Text>
+            <Text className={`font-plex-medium text-[12px] uppercase tracking-[1.2px] ${headingInk}`}>{heading}</Text>
           ) : (
             <View />
           )}

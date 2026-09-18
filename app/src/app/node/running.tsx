@@ -141,7 +141,7 @@ export default function NodeRunning() {
         <View className="mt-4 h-8 flex-row items-center justify-between">
           <Text className="font-plex-semibold text-[17px] text-ink">{c.common.brand}</Text>
           <View className="rounded-pill bg-surface px-3 py-1">
-            <Text className="font-mono text-[12px] text-muted">{c.node.demoSpeed}</Text>
+            <Text className="font-plex-medium text-[12px] text-muted">{c.node.demoSpeed}</Text>
           </View>
         </View>
 
@@ -149,7 +149,7 @@ export default function NodeRunning() {
           {/* listening state, on the trust tint — the same chip the capture screen uses */}
           <View className="mb-8 flex-row items-center gap-2 rounded-pill bg-tint-trust px-4 py-2">
             <View className="h-2 w-2 rounded-full bg-ok-bright" />
-            <Text className="font-mono text-[13px] text-tint-trust-ink">{c.node.listening}</Text>
+            <Text className="font-plex-medium text-[13px] text-tint-trust-ink">{c.node.listening}</Text>
           </View>
 
           <ListeningHalo still={reducedMotion}>
@@ -175,12 +175,12 @@ export default function NodeRunning() {
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">
               {clock(elapsed)}
             </Text>
-            <Text className="mt-1 font-mono text-[13px] text-muted">{c.node.elapsed}</Text>
+            <Text className="mt-1 font-plex text-[13px] text-muted">{c.node.elapsed}</Text>
           </View>
           <View className="w-px bg-line" />
           <View className="flex-1 items-center">
             <Text className="font-mono-medium text-[34px] leading-10 text-ink">{battery}%</Text>
-            <Text className="mt-1 font-mono text-[13px] text-muted">{c.node.battery}</Text>
+            <Text className="mt-1 font-plex text-[13px] text-muted">{c.node.battery}</Text>
           </View>
         </View>
 
