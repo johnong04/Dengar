@@ -32,7 +32,11 @@ export const SETAPAK_BOUNDS: Bounds = {
 /** The raster's intrinsic pixel size. Any other size is a uniform scale of it. */
 export const SETAPAK_RASTER: Size = { width: 512, height: 768 };
 
-/** Attribution is a licence obligation on every surface that renders the raster, not decoration. */
+/**
+ * Kept for the raster's own record. The string screens actually RENDER now comes from
+ * `@/components/Basemap`, because which licence is owed depends on which ground painted — the
+ * bundled OSM raster on native, OSM + CARTO vector tiles in the browser.
+ */
 export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
 
 const EARTH_CIRCUMFERENCE_M = 40075016.686;
@@ -148,4 +152,43 @@ export function metresPerPixel(size: Size, bounds: Bounds = SETAPAK_BOUNDS): num
   const midLat = (bounds.north + bounds.south) / 2;
   const metres = ((bounds.east - bounds.west) / 360) * EARTH_CIRCUMFERENCE_M * Math.cos(midLat * DEG);
   return metres / size.width;
+}
+
+/**
+ * ── The bridge to a real vector basemap (web only) ────────────────────────────────────────────
+ *
+ * Everything above projects into OUR raster's frame. A slippy map (maplibre-gl) wants the same view
+ * expressed as `center` + `zoom` instead. These two functions are that translation, and they are
+ * the reason the vector ground lines up with the projected overlays to the pixel: the overlays are
+ * NOT re-derived for the map library — the map library is told to match the overlays.
+ *
+ * Both are exact, not approximations. `SETAPAK_BOUNDS` is two z15 tiles wide by construction
+ * (360 / 2^15 × 2 = 0.02197265625°), so the raster's 512 px span maps onto the slippy-map zoom
+ * ladder with no fudge factor.
+ */
+
+/** MapLibre's tile size in CSS px — the world is `MAPLIBRE_TILE × 2^zoom` px across. */
+const MAPLIBRE_TILE = 512;
+/** How many times the raster's longitude span divides into the whole world. Exactly 2^14. */
+const WORLD_OVER_RASTER = 360 / (SETAPAK_BOUNDS.east - SETAPAK_BOUNDS.west);
+
+/**
+ * The fractional maplibre zoom at which a vector map renders the same ground scale as our raster
+ * drawn at `size`. Fractional on purpose — snapping to an integer zoom would shift the ground
+ * under overlays that were placed at the true scale.
+ */
+export function mapZoom(size: Size): number {
+  return Math.log2((size.width * WORLD_OVER_RASTER) / MAPLIBRE_TILE);
+}
+
+/**
+ * The coordinate sitting at the centre of a viewport, given the raster geometry `fitFocus` +
+ * `clampOffset` produced. This is what a slippy map must be centred on to show the same ground.
+ */
+export function viewCentre(size: Size, offset: Point, viewport: Size, bounds: Bounds = SETAPAK_BOUNDS): LatLon {
+  return unproject(
+    { x: viewport.width / 2 - offset.x, y: viewport.height / 2 - offset.y },
+    size,
+    bounds,
+  );
 }

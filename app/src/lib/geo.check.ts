@@ -15,8 +15,10 @@ import {
   fitFocus,
   metresPerPixel,
   project,
+  mapZoom,
   projectRect,
   unproject,
+  viewCentre,
 } from './geo';
 
 const assert = {
@@ -149,3 +151,42 @@ assert.close(metresPerPixel(R), 4.7697, 1e-3, 'metres per pixel at raster size')
 assert.close(metresPerPixel({ width: R.width * 2, height: R.height * 2 }), 4.7697 / 2, 1e-3, '2×');
 
 console.log('geo: ok');
+
+// ── 10. the maplibre bridge ─ a vector ground must land on the same pixels as the raster ────
+// The raster spans two z15 tiles, so at its intrinsic 512 px it is maplibre zoom 14 on the 512-px
+// tile ladder. NOT exactly, and the gap is worth naming: `SETAPAK_BOUNDS` is written to 6 dp, so
+// its span is 0.021972° where the true tile edge is 0.02197265625° — a scale error of 3.0e-5,
+// i.e. 4.3e-5 of a zoom level, i.e. 0.012 px across a 390 px viewport. Sub-pixel, so the vector
+// ground and the projected overlays cannot visibly disagree; but it is a rounding, not an
+// identity, and an assertion claiming 1e-9 here would be claiming a precision the constants do
+// not carry. Tolerance is set to just over the known error so a REAL drift still fails.
+const ZOOM_EPS = 5e-5;
+assert.close(mapZoom(R), 14, ZOOM_EPS, 'raster at intrinsic size is maplibre zoom 14');
+assert.close(mapZoom({ width: R.width * 2, height: R.height * 2 }), 15, ZOOM_EPS, 'doubling adds a zoom');
+assert.close(mapZoom({ width: R.width / 2, height: R.height / 2 }), 13, ZOOM_EPS, 'halving drops a zoom');
+// The ladder itself must be exact even though its origin is rounded — a doubling is one zoom step.
+assert.close(
+  mapZoom({ width: R.width * 2, height: 0 }) - mapZoom(R),
+  1,
+  1e-12,
+  'the zoom ladder is exactly log2',
+);
+
+// `viewCentre` must invert `fitFocus`: the focus centre is what a viewport of that fit is centred on.
+const vc = viewCentre(fit.size, fit.offset, viewport);
+assert.close(vc.lon, (focus.west + focus.east) / 2, 1e-9, 'view centre lon == focus centre');
+assert.close(vc.lat, (focus.north + focus.south) / 2, 1e-9, 'view centre lat == focus centre');
+
+// …and it must follow a CLAMPED offset rather than the ideal one, or the vector ground would slide
+// out from under the overlays exactly when `clampOffset` kicks in (the near-bounds-edge case).
+const shoved = clampOffset({ x: 9999, y: 9999 }, fit.size, viewport);
+const vcShoved = viewCentre(fit.size, shoved, viewport);
+assert.ok(vcShoved.lon < vc.lon, 'clamping west moves the view centre west');
+assert.close(
+  project(vcShoved, fit.size).x + shoved.x,
+  viewport.width / 2,
+  1e-6,
+  'clamped view centre still projects to the viewport centre',
+);
+
+console.log('geo: maplibre bridge ok');

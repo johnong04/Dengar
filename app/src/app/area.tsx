@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Basemap, MAP_ATTRIBUTION } from '@/components/Basemap';
 import { TabBar } from '@/components/TabBar';
 import { type Copy, useCopy } from '@/copy';
 import {
@@ -17,7 +17,6 @@ import {
   type Tone,
 } from '@/data/district';
 import {
-  OSM_ATTRIBUTION,
   SETAPAK_RASTER,
   clampOffset,
   fitFocus,
@@ -46,17 +45,23 @@ import {
 //     tinted by how many detections fell inside it. Never a dot on someone's house — which is a
 //     privacy stance first and a talking point second, so the screen says it in words too.
 //
-// No map library, no new dependency (design-system.md §Maps): one PNG and `View`s.
+// The GROUND is now `components/Basemap` — live vector tiles in the browser, the bundled raster on
+// the phone and whenever the tiles do not arrive. The data layer below is unchanged and still comes
+// straight out of `src/lib/geo.ts`, which is the point: swapping how the streets are painted must
+// not move a single detection. design-system.md §Maps banned a map library on the grounds that
+// tiles need network and specs §7's uncuttable shot was in airplane mode; that shot is cut
+// (CLAUDE.local.md, 2026-09-19), and the raster fallback covers the network risk that remains.
 // No motion at all — §Motion bans page-load choreography, so there is nothing to reduce.
-
-const MAP_IMAGE = require('@/assets/maps/setapak-osm.png');
 
 /** The citizen's own neighbourhood. One seeded home area; the rest of the district is not theirs. */
 const HOME_AREA_ID = 'taman-melati';
 
 /** Breathing room between the neighbourhood outline and the panel edge, top and bottom. */
 const MAP_MARGIN = 32;
-/** How far back the daylight raster is pushed. High on purpose: this is a night surface. */
+/**
+ * How far back the ground is pushed. High on purpose: this is a night surface. `Basemap` scales it
+ * down on web, where the vector style is already dark and this much veil would only blur it.
+ */
 const MAP_VEIL = 0.78;
 
 /**
@@ -265,31 +270,16 @@ export default function Area() {
           >
             {ready ? (
               <>
-                <Image
-                  source={MAP_IMAGE}
-                  contentFit="fill"
+                {/* the ground: vector tiles in the browser, the bundled raster on the phone — both
+                    at the geometry `fitFocus` computed, so the circles below never move */}
+                <Basemap
+                  size={fit.size}
+                  offset={offset}
+                  viewport={viewport}
+                  veil={MAP_VEIL}
+                  veilClass="bg-bg"
+                  theme="dark"
                   accessibilityLabel={c.area.basemapA11y(district.name)}
-                  style={{
-                    position: 'absolute',
-                    left: offset.x,
-                    top: offset.y,
-                    width: fit.size.width,
-                    height: fit.size.height,
-                  }}
-                />
-                {/* night veil — the one translucent layer that is not data. OSM ships a daylight
-                    palette; at full strength it fights every warm token on this screen. */}
-                <View
-                  className="bg-bg"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    opacity: MAP_VEIL,
-                    pointerEvents: 'none',
-                  }}
                 />
 
                 {/* Coarse density as graduated circles, never as filled rectangles.
@@ -328,7 +318,7 @@ export default function Area() {
             <Text className="font-mono text-[12px] text-muted">
               {c.area.shading(activeCluster.windowHours)}
             </Text>
-            <Text className="mt-1 font-mono text-[12px] text-muted">{OSM_ATTRIBUTION}</Text>
+            <Text className="mt-1 font-mono text-[12px] text-muted">{MAP_ATTRIBUTION}</Text>
           </View>
         </View>
 

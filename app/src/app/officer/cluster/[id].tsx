@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Basemap, MAP_ATTRIBUTION } from '@/components/Basemap';
 import { DirectiveRecord } from '@/components/DirectiveRecord';
 import { type Copy, useCopy } from '@/copy';
 import {
@@ -22,7 +22,6 @@ import {
   type Tone,
 } from '@/data/district';
 import {
-  OSM_ATTRIBUTION,
   clampOffset,
   fitFocus,
   metresPerPixel,
@@ -40,8 +39,10 @@ import { acknowledge, useAcknowledgement } from '@/store/dispatch';
 // dot, ring and label is placed by projecting its lat/lon through `src/lib/geo.ts`. The projection
 // is red-tested in `src/lib/geo.check.ts` — if it drifts, that file fails, not this screen.
 //
-// No map library (design-system.md §Maps: native module → EAS rebuild, tiles need network, and
-// specs §7's uncuttable shot is in airplane mode). `expo-image` draws one PNG; the rest is Views.
+// The ground is `components/Basemap`: live vector tiles in the browser, the bundled raster on the
+// phone and whenever the tiles do not arrive. design-system.md §Maps banned a map library because
+// tiles need network and specs §7's uncuttable shot was in airplane mode; that shot is cut
+// (CLAUDE.local.md, 2026-09-19). Every pill, dot and ring below still comes from `src/lib/geo.ts`.
 //
 // officer-d's flaw fixed: its lower third was empty hand-drawn parcels. Here the map is anchored on
 // the block grid's own centre and continues under the sheet, so every pixel of it is real streets.
@@ -51,8 +52,6 @@ import { acknowledge, useAcknowledgement } from '@/store/dispatch';
 //
 // Slice 15: signing the directive here writes the shared record in `store/dispatch.ts`, so the
 // alert feed and the officer home behind this screen are already updated when it is dismissed.
-
-const MAP_IMAGE = require('@/assets/maps/setapak-osm.png');
 
 const SHEET_H_FALLBACK = 232;
 const PILL_GUTTER = 12;
@@ -266,27 +265,18 @@ export default function ClusterDetail() {
       >
         {ready ? (
           <>
-            <Image
-              source={MAP_IMAGE}
-              contentFit="fill"
+            {/* The ground. OSM's raster paints its own semantics — pink military parcels, green
+                reserves, yellow trunk roads — which fight the alert-red data layer for the same
+                attention, hence the veil. The vector `positron` style on web is already the quiet
+                grey an operational map wants, so `Basemap` all but drops the veil there. */}
+            <Basemap
+              size={fit.size}
+              offset={offset}
+              viewport={visible}
+              veil={0.25}
+              veilClass="bg-o-bg"
+              theme="light"
               accessibilityLabel={c.area.basemapA11y(district.name)}
-              style={{
-                position: 'absolute',
-                left: offset.x,
-                top: offset.y,
-                width: fit.size.width,
-                height: fit.size.height,
-              }}
-            />
-            {/* Basemap scrim. OSM paints its own semantics — pink military parcels, green reserves,
-                yellow trunk roads — and at full saturation they fight the alert-red data layer for
-                the same attention. A flat `o-bg` veil pushes the whole raster back one plane so the
-                dots and the ring read first, while the street geometry an officer needs stays
-                legible. The only translucent layer on the screen that is not itself data. */}
-            <View
-              pointerEvents="none"
-              className="bg-o-bg"
-              style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, opacity: 0.25 }}
             />
 
             {/* THE DATA LAYER — one pill per hot block, carrying that block's own count.
@@ -448,7 +438,7 @@ export default function ClusterDetail() {
                 </View>
               </View>
               <View className="h-4 w-[1px] bg-o-line" />
-              <Text className="font-mono text-[10px] text-o-muted">{OSM_ATTRIBUTION}</Text>
+              <Text className="font-mono text-[10px] text-o-muted">{MAP_ATTRIBUTION}</Text>
             </View>
           </>
         ) : null}
