@@ -1,4 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
+import { List, Map, Mic } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -9,6 +10,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCopy } from '@/copy';
+import tokens from '../../tailwind.tokens.js';
 
 /**
  * The citizen shell: Listen / Area / History.
@@ -19,9 +21,17 @@ import { useCopy } from '@/copy';
  * touches no route. If the app ever needs real per-tab state, promote it to a navigator then.
  *
  * Active state is FILL + INK + a dot — never a pill sliding across the bar, which is the 2026 nav
- * cliché (docs/design/research-2026-mobile.md §2). Icons are composed from Views; there is no icon
- * library and adding one is banned. Colours come from tokens via className — plain Views keep it;
- * only a reanimated Animated.View drops className, which is why the dot's colour is inline.
+ * cliché (docs/design/research-2026-mobile.md §2). Labels stay: ours are not universal glyphs, and
+ * icon-only bars fail recognition for anything that is not home/search/profile (§1).
+ *
+ * The three icons were hand-built from `View`s because an icon library was banned — a rule written
+ * for NATIVE modules and wrongly applied to JS-only ones (plan 23 §why we never fixed it). They are
+ * now lucide, which is the same 1.5–2 px stroke set the rest of the app uses, so the bar stops
+ * being the only place in the app with bespoke glyph geometry.
+ *
+ * Weight carries the active state, not colour alone: stroke 1.75 → 2.25, muted → ink. Colours come
+ * from tokens via className on plain Views; a reanimated Animated.View drops className on
+ * react-native-web, which is why the dot's colour is inline.
  */
 
 const TABS = [
@@ -33,59 +43,25 @@ const TABS = [
 const DUR = 150;
 const EASE = Easing.bezier(0.05, 0.7, 0.1, 1); // emphasized-decelerate (M3)
 
-/** Concentric ring — the capture instrument in miniature. */
-function ListenIcon({ active }: { active: boolean }) {
-  return (
-    <View className="h-6 w-6 items-center justify-center">
-      <View
-        className={active ? 'border-ink' : 'border-muted'}
-        style={{ width: 20, height: 20, borderRadius: 10, borderWidth: active ? 2 : 1.5 }}
-      />
-      <View
-        className={active ? 'bg-ink' : 'border-muted'}
-        style={{
-          position: 'absolute',
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          borderWidth: active ? 0 : 1.5,
-        }}
-      />
-    </View>
-  );
-}
+/**
+ * The three destinations, as icons. Semantic, never decorative: the microphone IS the capture
+ * action, the map IS the neighbourhood view, the list IS the log of detections. An icon that only
+ * repeats its label is noise (docs/design/research-2026-mobile.md §3).
+ */
+const ICON = { listen: Mic, area: Map, history: List } as const;
 
-/** Rounded block with a located dot — ground, and something on it. */
-function AreaIcon({ active }: { active: boolean }) {
-  return (
-    <View className="h-6 w-6 items-center justify-center">
-      <View
-        className={active ? 'border-ink bg-surface-raised' : 'border-muted'}
-        style={{ width: 20, height: 18, borderRadius: 5, borderWidth: active ? 2 : 1.5 }}
-      />
-      <View
-        className={active ? 'bg-ink' : 'bg-muted'}
-        style={{ position: 'absolute', top: 8, left: 13, width: 6, height: 6, borderRadius: 3 }}
-      />
-    </View>
-  );
-}
+/**
+ * An SVG stroke is a PROP, not a className, so icon colour cannot come through Tailwind. It comes
+ * from `tailwind.tokens.js` instead — the same file the config spreads — so "no raw hex in screens"
+ * still holds and an icon can never drift from the palette.
+ */
+const INK = tokens.colors.ink;
+const MUTED = tokens.colors.muted;
 
-/** Three stacked rules — a list, read as records. */
-function HistoryIcon({ active }: { active: boolean }) {
-  const h = active ? 2.5 : 2;
+function TabIcon({ name, active }: { name: keyof typeof ICON; active: boolean }) {
+  const Glyph = ICON[name];
   return (
-    <View className="h-6 w-6 items-center justify-center">
-      <View style={{ gap: 4 }}>
-        {[20, 20, 13].map((w, i) => (
-          <View
-            key={i}
-            className={active ? 'bg-ink' : 'bg-muted'}
-            style={{ width: w, height: h, borderRadius: 1 }}
-          />
-        ))}
-      </View>
-    </View>
+    <Glyph size={22} color={active ? INK : MUTED} strokeWidth={active ? 2.25 : 1.75} />
   );
 }
 
@@ -149,12 +125,6 @@ export function TabBar() {
     area: c.nav.area,
     history: c.nav.history,
   };
-  const icons: Record<string, (a: boolean) => React.ReactNode> = {
-    listen: (a) => <ListenIcon active={a} />,
-    area: (a) => <AreaIcon active={a} />,
-    history: (a) => <HistoryIcon active={a} />,
-  };
-
   return (
     <View
       className="flex-row border-line bg-bg"
@@ -168,7 +138,7 @@ export function TabBar() {
           // replace, not push: tabs are peers, and pushing would stack Listen on Listen.
           onPress={() => pathname !== t.href && router.replace(t.href as never)}
         >
-          {icons[t.key](pathname === t.href)}
+          <TabIcon name={t.key} active={pathname === t.href} />
         </Tab>
       ))}
     </View>

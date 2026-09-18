@@ -1,6 +1,8 @@
 import { Link } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Bug, ChevronRight, MapPin, Radio, Truck } from 'lucide-react-native';
+import tokens from '../../../tailwind.tokens.js';
 
 import { DirectiveRecord } from '@/components/DirectiveRecord';
 import { type Copy, useCopy } from '@/copy';
@@ -109,6 +111,14 @@ function kpiLabel(key: string, c: Copy): string {
       : c.officer.kpiNodes;
 }
 
+/**
+ * KPI key → its icon. The pattern is `docs/design/inspiration/fleetmanagement-1.jpg`'s own KPI
+ * strip: a glyph, a small-caps label, a big figure, a delta pill. Each names the THING counted —
+ * a mosquito heard, a place on the map, a listening device — so the three heads are told apart at
+ * a glance rather than read left to right.
+ */
+const KPI_ICON = { detections: Bug, clusters: MapPin } as const;
+
 export default function OfficerHome() {
   const c = useCopy();
   const ack = useAcknowledgement();
@@ -140,9 +150,15 @@ export default function OfficerHome() {
               key={k.key}
               className={`flex-1 px-4 py-2.5 ${i < kpis.length - 1 ? 'border-r border-o-line' : ''}`}
             >
-              <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
-                {kpiLabel(k.key, c)}
-              </Text>
+              <View className="flex-row items-center gap-1.5">
+                {(() => {
+                  const Glyph = KPI_ICON[k.key as keyof typeof KPI_ICON] ?? Radio;
+                  return <Glyph size={13} color={tokens.colors['o-muted']} strokeWidth={2} />;
+                })()}
+                <Text className="font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
+                  {kpiLabel(k.key, c)}
+                </Text>
+              </View>
               <View className="mt-1 flex-row items-baseline gap-1.5">
                 <Text className="font-mono-medium text-[22px] text-o-ink">{k.value}</Text>
                 <View className="rounded-pill bg-o-surface px-1.5 py-[1px]">
@@ -166,6 +182,9 @@ export default function OfficerHome() {
           </View>
         ) : (
           <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5">
+            {/* The directive IS "send a fogging truck" (specs §1). The glyph states the action the
+                card commands; the words state where and by when. */}
+            <Truck size={22} color={tokens.colors['o-bg']} strokeWidth={1.75} />
             <View className="flex-1">
               {/* specs.md §1's directive, verbatim in intent: "fog here, within 48 hours". */}
               <Text className="font-plex-semibold text-[17px] text-o-bg">
@@ -404,7 +423,7 @@ export default function OfficerHome() {
                 >
                   {w.delta}
                 </Text>
-                <Text className="font-mono text-[13px] text-o-muted">›</Text>
+                <ChevronRight size={18} color={tokens.colors['o-muted']} strokeWidth={2} />
               </Pressable>
             </Link>
           ))}

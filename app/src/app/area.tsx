@@ -1,4 +1,14 @@
 import { router } from 'expo-router';
+import {
+  ChevronLeft,
+  CloudRain,
+  Container,
+  Droplets,
+  ShieldCheck,
+  SprayCan,
+  type LucideIcon,
+} from 'lucide-react-native';
+import tokens from '../../tailwind.tokens.js';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,13 +94,19 @@ const riskOf = (c: Copy): Record<Tone, { word: string; text: string; dot: string
  * nothing here needs specs §9. The cadence tag is the instruction's other half (do it now vs do it
  * weekly), not an icon: design-system.md bans decoration standing in for information.
  */
-const preventionOf = (c: Copy): { action: string; when: string; why?: string }[] => [
-  { action: c.area.prevention1, when: c.area.whenNow },
-  { action: c.area.prevention2, when: c.area.whenNow },
-  { action: c.area.prevention3, when: c.area.whenWeekly },
+const preventionOf = (
+  c: Copy,
+): { action: string; when: string; why?: string; Icon: LucideIcon }[] => [
+  // Each icon names the OBJECT the action acts on — trays of water, a covered drum, a roof drain,
+  // repellent. An icon that only restates its label is noise (research-2026-mobile.md §3); these
+  // let the eye find the right row in a four-row list without reading all four.
+  { action: c.area.prevention1, when: c.area.whenNow, Icon: Droplets },
+  { action: c.area.prevention2, when: c.area.whenNow, Icon: Container },
+  { action: c.area.prevention3, when: c.area.whenWeekly, Icon: CloudRain },
   {
     action: c.area.prevention4,
     when: c.area.whenDaylight,
+    Icon: SprayCan,
     // specs.md §2: Aedes aegypti bites in daylight. That is why this line is not "at night".
     why: c.area.prevention4Why,
   },
@@ -222,7 +238,7 @@ export default function Area() {
           {/* 24, not the officer chevron's 22: design-system.md §Type reserves 10/11/22 for the
               officer surface, and a citizen screen borrowing an officer step is exactly the
               "invented scale" defect that file calls out. */}
-          <Text className="font-plex-medium text-[24px] text-primary">‹</Text>
+          <ChevronLeft size={24} color={tokens.colors.primary} strokeWidth={2} />
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
           <Text className="font-plex-semibold text-[17px] text-ink">{c.area.title}</Text>
@@ -326,13 +342,18 @@ export default function Area() {
 
         {/* ── the privacy stance, stated rather than implied ───────────────────────
             On the trust tint, the same block the capture screen uses for "nothing is kept". */}
-        <View className="mt-3 rounded-block bg-tint-trust px-5 py-4">
-          <Text className="font-plex text-[16px] leading-6 text-ink">
-            {c.area.privacyBody(BLOCK_M)}
-          </Text>
-          <Text className="mt-2 font-plex-medium text-[13px] text-tint-trust-ink">
-            {c.area.privacySpec}
-          </Text>
+        <View className="mt-3 flex-row gap-3 rounded-block bg-tint-trust px-5 py-4">
+          <View className="mt-[3px] shrink-0">
+            <ShieldCheck size={20} color={tokens.colors['tint-trust-ink']} strokeWidth={1.75} />
+          </View>
+          <View className="flex-1">
+            <Text className="font-plex text-[16px] leading-6 text-ink">
+              {c.area.privacyBody(BLOCK_M)}
+            </Text>
+            <Text className="mt-2 font-plex-medium text-[13px] text-tint-trust-ink">
+              {c.area.privacySpec}
+            </Text>
+          </View>
         </View>
 
         {/* ── the action ──────────────────────────────────────────────────────────
@@ -344,9 +365,12 @@ export default function Area() {
           {PREVENTION.map((p, i) => (
             <View
               key={p.action}
-              className={`flex-row items-start justify-between gap-4 py-4 ${i === 0 ? '' : 'border-t border-line'}`}
+              className={`flex-row items-start gap-3 py-4 ${i === 0 ? '' : 'border-t border-line'}`}
             >
-              <View className="shrink">
+              <View className="mt-[2px] shrink-0">
+                <p.Icon size={20} color={tokens.colors.muted} strokeWidth={1.75} />
+              </View>
+              <View className="flex-1 shrink">
                 <Text className="font-plex text-[16px] leading-6 text-ink">{p.action}</Text>
                 {p.why ? (
                   <Text className="mt-1 font-plex text-[13px] leading-5 text-muted">{p.why}</Text>

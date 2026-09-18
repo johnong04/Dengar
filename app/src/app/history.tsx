@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import tokens from '../../tailwind.tokens.js';
 
 import { TabBar } from '@/components/TabBar';
 import { LanguageToggle } from '@/components/LanguageToggle';
@@ -209,7 +211,10 @@ export default function History() {
             accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← {c.history.back}</Text>
+            <View className="flex-row items-center gap-1">
+              <ChevronLeft size={18} color={tokens.colors.muted} strokeWidth={2} />
+              <Text className="font-plex-medium text-[15px] text-muted">{c.history.back}</Text>
+            </View>
           </Pressable>
           <View className="flex-row items-center gap-2">
             <SyncChip />
@@ -278,7 +283,7 @@ export default function History() {
             className="mt-3 min-h-[44px] flex-row items-center justify-between active:opacity-70"
           >
             <Text className="font-plex text-[15px] text-muted">{c.history.officerEntry}</Text>
-            <Text className="font-plex text-[15px] text-muted">›</Text>
+            <ChevronRight size={18} color={tokens.colors.muted} strokeWidth={2} />
           </Pressable>
         </View>
       </View>

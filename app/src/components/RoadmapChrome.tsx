@@ -2,6 +2,8 @@ import { Link, router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
+import tokens from '../../tailwind.tokens.js';
 
 import { type Copy, useCopy } from '@/copy';
 import type { Figure } from '@/lib/impact';
@@ -113,7 +115,10 @@ export function RoadmapScreen({ title, headline, standing, self, children }: Scr
             accessibilityLabel={c.roadmap.backFrom(title)}
             className="min-h-[44px] shrink justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← {title}</Text>
+            <View className="flex-row items-center gap-1">
+              <ChevronLeft size={18} color={tokens.colors.muted} strokeWidth={2} />
+              <Text className="font-plex-medium text-[15px] text-muted">{title}</Text>
+            </View>
           </Pressable>
           <RoadmapMark />
         </View>

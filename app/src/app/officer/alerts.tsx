@@ -2,6 +2,8 @@ import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import tokens from '../../../tailwind.tokens.js';
 
 import { type Copy, useCopy } from '@/copy';
 import { FOG_BY_STAMP, activeCluster, district, type Tone } from '@/data/district';
@@ -168,7 +170,7 @@ export default function OfficerAlerts() {
           className="h-11 w-11 items-center justify-center"
           style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
         >
-          <Text className="font-plex-medium text-[22px] text-o-primary">‹</Text>
+          <ChevronLeft size={22} color={tokens.colors['o-primary']} strokeWidth={2} />
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
           <Text className="font-plex-semibold text-[17px] text-o-ink">{c.officer.alertsTitle}</Text>
@@ -248,7 +250,7 @@ export default function OfficerAlerts() {
               </View>
 
               <Spark data={row.area.spark} tone={row.area.tone} />
-              <Text className="font-mono text-[13px] text-o-muted">›</Text>
+              <ChevronRight size={18} color={tokens.colors['o-muted']} strokeWidth={2} />
             </Pressable>
           </Link>
         ))}

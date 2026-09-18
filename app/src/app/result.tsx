@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
+import tokens from '../../tailwind.tokens.js';
 
 import { type Copy, useCopy } from '@/copy';
 import {
@@ -497,7 +499,10 @@ function Detected({
             accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← {c.result.back}</Text>
+            <View className="flex-row items-center gap-1">
+              <ChevronLeft size={18} color={tokens.colors.muted} strokeWidth={2} />
+              <Text className="font-plex-medium text-[15px] text-muted">{c.result.back}</Text>
+            </View>
           </Pressable>
           <Text className="font-mono text-[12px] text-muted">{stamp}</Text>
         </View>
@@ -596,7 +601,10 @@ export default function Result() {
             accessibilityLabel={c.common.backToCapture}
             className="min-h-[44px] justify-center pr-6 active:opacity-70"
           >
-            <Text className="font-plex-medium text-[15px] text-muted">← {c.result.back}</Text>
+            <View className="flex-row items-center gap-1">
+              <ChevronLeft size={18} color={tokens.colors.muted} strokeWidth={2} />
+              <Text className="font-plex-medium text-[15px] text-muted">{c.result.back}</Text>
+            </View>
           </Pressable>
           <Text className="font-mono text-[12px] text-muted">{stamp}</Text>
         </View>

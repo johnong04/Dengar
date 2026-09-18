@@ -1,6 +1,8 @@
+import { CloudOff, RefreshCw } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { useCopy } from '@/copy';
+import tokens from '../../tailwind.tokens.js';
 import { useConnectivity } from '@/lib/connectivity';
 import { useDetections } from '@/store/detections';
 
@@ -10,6 +12,10 @@ import { useDetections } from '@/store/detections';
  * The hairline border is gone: the warm law groups by filled surface, not by rule.
  * Online with nothing pending renders nothing; the row it sits in owns a fixed height
  * so appearing/disappearing never shifts layout vertically.
+ *
+ * The glyph distinguishes the two states the WORDS nearly share — "syncing 1" and "1 queued
+ * offline" are the same shape at 12 px in the corner of a dark screen, and which one is showing is
+ * the whole point of the chip.
  */
 export function SyncChip() {
   const c = useCopy();
@@ -22,7 +28,12 @@ export function SyncChip() {
   const label = online ? c.sync.syncing(pending) : c.sync.offline(pending);
 
   return (
-    <View className="rounded-pill bg-surface-raised px-3 py-1">
+    <View className="flex-row items-center gap-1.5 rounded-pill bg-surface-raised px-3 py-1">
+      {online ? (
+        <RefreshCw size={12} color={tokens.colors.muted} strokeWidth={2} />
+      ) : (
+        <CloudOff size={12} color={tokens.colors.muted} strokeWidth={2} />
+      )}
       <Text className="font-plex-medium text-[12px] text-muted">{label}</Text>
     </View>
   );

@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
+import tokens from '../../../../tailwind.tokens.js';
 
 import { Basemap, MAP_ATTRIBUTION } from '@/components/Basemap';
 import { DirectiveRecord } from '@/components/DirectiveRecord';
@@ -243,7 +245,7 @@ export default function ClusterDetail() {
           className="h-11 w-11 items-center justify-center"
           style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
         >
-          <Text className="font-plex-medium text-[22px] text-o-primary">‹</Text>
+          <ChevronLeft size={22} color={tokens.colors['o-primary']} strokeWidth={2} />
         </Pressable>
         <View className="flex-1 flex-row items-center gap-2">
           <Text className="font-plex-semibold text-[17px] text-o-ink">{area.name}</Text>

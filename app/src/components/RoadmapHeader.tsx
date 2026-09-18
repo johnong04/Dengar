@@ -1,5 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
+import tokens from '../../tailwind.tokens.js';
 
 import { useCopy } from '@/copy';
 import { district } from '@/data/district';
@@ -31,7 +33,7 @@ export function RoadmapHeader({ title, kicker }: { title: string; kicker: string
           className="h-11 w-11 items-center justify-center"
           style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
         >
-          <Text className="font-plex-medium text-[22px] text-o-primary">‹</Text>
+          <ChevronLeft size={22} color={tokens.colors['o-primary']} strokeWidth={2} />
         </Pressable>
         <Text className="flex-1 font-plex-semibold text-[17px] text-o-ink">{title}</Text>
         <Text className="font-mono text-[11px] text-o-muted">{district.stamp}</Text>
