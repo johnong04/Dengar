@@ -250,16 +250,24 @@ export default function Area() {
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="px-5 pb-8">
+      {/* The gutter is per-section, not on the container. A blanket `px-5` here is what boxed the
+          map in the first place — with it, "full bleed" is impossible without a negative margin,
+          and the map is the one element on this screen that must run edge to edge. */}
+      <ScrollView className="flex-1" contentContainerClassName="pb-8">
         {/* ── the answer ──────────────────────────────────────────────────────────
             One level, in words, with the arithmetic underneath it in mono. A citizen is never
-            shown a score; the number is evidence for the word, not the readout itself. */}
-        <View className="mt-4 rounded-block bg-surface px-5 py-5">
+            shown a score; the number is evidence for the word, not the readout itself.
+
+            NOT in a card. It was, and it was the first of four stacked rounded rectangles that made
+            this screen the plan's own example of the #1 AI-generated tell (§diagnosis 5). A surface
+            GROUPS things that belong together; the screen's single answer belongs to the screen, so
+            it sits on the ground at headline weight and the card disappears. */}
+        <View className="px-5 pt-5">
           <View className="flex-row items-center gap-2">
             <View className={`h-2 w-2 rounded-full ${risk.dot}`} />
             <Text className="font-plex-medium text-[15px] text-muted">{area.name}</Text>
           </View>
-          <Text className={`mt-2 font-plex-bold text-[30px] leading-9 ${risk.text}`}>
+          <Text className={`mt-1 font-plex-bold text-[34px] leading-10 ${risk.text}`}>
             {risk.word}
           </Text>
           <Text className="mt-2 font-plex text-[16px] leading-6 text-ink">
@@ -275,7 +283,7 @@ export default function Area() {
         {/* ── where, coarsely ─────────────────────────────────────────────────────
             The basemap under a heavy veil, the neighbourhood outlined, and blocks shaded by how
             many detections landed in them. Nothing finer than a block is ever drawn. */}
-        <View className="mt-3 overflow-hidden rounded-block bg-surface">
+        <View className="mt-5">
           <View
             className="overflow-hidden bg-bg"
             style={{ height: viewport.height }}
@@ -329,10 +337,13 @@ export default function Area() {
             ) : null}
           </View>
 
-          {/* what the shading means, and the attribution the raster's licence requires */}
-          {/* Stacked, not a justify-between row: at 390 px both strings wrap mid-phrase and the
+          {/* What the shading means, and the attribution the tiles' licence requires. Under the
+              map rather than inside a panel with it: the map has no frame any more, so there is no
+              box for a caption to live in, and a caption in the gutter reads as a caption.
+
+              Stacked, not a justify-between row: at 390 px both strings wrap mid-phrase and the
               licence line breaks across two ragged columns. Two short lines always fit. */}
-          <View className="px-5 py-3">
+          <View className="px-5 pt-3">
             <Text className="font-plex text-[12px] text-muted">
               {c.area.shading(activeCluster.windowHours)}
             </Text>
@@ -342,7 +353,7 @@ export default function Area() {
 
         {/* ── the privacy stance, stated rather than implied ───────────────────────
             On the trust tint, the same block the capture screen uses for "nothing is kept". */}
-        <View className="mt-3 flex-row gap-3 rounded-block bg-tint-trust px-5 py-4">
+        <View className="mx-5 mt-5 flex-row gap-3 rounded-block bg-tint-trust px-5 py-4">
           <View className="mt-[3px] shrink-0">
             <ShieldCheck size={20} color={tokens.colors['tint-trust-ink']} strokeWidth={1.75} />
           </View>
@@ -358,10 +369,13 @@ export default function Area() {
 
         {/* ── the action ──────────────────────────────────────────────────────────
             The whole point of the screen. Concrete, cadence-tagged, no lecture. */}
-        <Text className="mb-3 mt-6 font-plex-semibold text-[20px] text-ink">
+        <Text className="mb-3 mt-7 px-5 font-plex-semibold text-[20px] text-ink">
           {c.area.actionsHeading}
         </Text>
-        <View className="rounded-block bg-surface px-5">
+        {/* ONE surface, four hairline-separated rows — not four boxes. Four identical rounded
+            rectangles in a column is the pattern research-2026-mobile.md §8 names as THE
+            AI-generated tell, and plan §diagnosis 5 named this screen for it. */}
+        <View className="mx-5 rounded-block bg-surface px-5">
           {PREVENTION.map((p, i) => (
             <View
               key={p.action}
@@ -385,7 +399,7 @@ export default function Area() {
         <Pressable
           onPress={backToCapture}
           accessibilityRole="button"
-          className="mt-6 min-h-[52px] items-center justify-center rounded-block bg-surface-raised px-5 active:opacity-70"
+          className="mx-5 mt-6 min-h-[52px] items-center justify-center rounded-block bg-surface-raised px-5 active:opacity-70"
         >
           <Text className="font-plex-medium text-[15px] text-primary">{c.area.cta}</Text>
         </Pressable>
