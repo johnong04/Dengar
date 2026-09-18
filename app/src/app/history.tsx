@@ -1,9 +1,10 @@
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
+
 import tokens from '../../tailwind.tokens.js';
 
 import { TabBar } from '@/components/TabBar';
@@ -106,31 +107,32 @@ function backToCapture() {
   else router.replace('/');
 }
 
+/**
+ * One record in the log. Tapping it OPENS A SHEET rather than pushing the rows below it down.
+ *
+ * The inline accordion it replaces had a real cost: expanding row three shoved rows four and five
+ * off the screen, so reading one detection cost you the sight of every other one. A sheet is the
+ * 2026 answer for exactly this (docs/design/research-2026-mobile.md §6) and it is what
+ * `docs/design/inspiration/mapcluster-1.png` does — the list stays put and the detail rises over it.
+ */
 function Row({
   detection,
   first,
-  expanded,
   onPress,
-  reducedMotion,
 }: {
   detection: Detection;
   first: boolean;
-  expanded: boolean;
   onPress: () => void;
-  reducedMotion: boolean;
 }) {
   const c = useCopy();
   const aedes = detection.species === 'aedes';
   const inline = detailInline(detection, c);
-  const rows = readoutRows(detection, c);
-  const enter = reducedMotion ? undefined : FadeIn.duration(180);
 
   return (
     <View className={first ? '' : 'border-t border-line'}>
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityState={{ expanded }}
         className="min-h-[52px] flex-row items-center justify-between py-4 active:opacity-70"
       >
         <View className="shrink pr-4">
@@ -148,43 +150,54 @@ function Row({
           </View>
           {inline && <Text className="mt-1 font-plex text-[13px] text-muted">{inline}</Text>}
         </View>
-        <View className="items-end">
-          <Text className="font-mono-medium text-[17px] text-ink">
-            {score(detection.confidence)}
-          </Text>
-          <Text className="mt-1 font-mono text-[12px] text-muted">
-            {timeLabel(detection.at, c)}
-          </Text>
+        <View className="flex-row items-center gap-2">
+          <View className="items-end">
+            <Text className="font-mono-medium text-[17px] text-ink">
+              {score(detection.confidence)}
+            </Text>
+            <Text className="mt-1 font-mono text-[12px] text-muted">
+              {timeLabel(detection.at, c)}
+            </Text>
+          </View>
+          <ChevronRight size={16} color={tokens.colors.line} strokeWidth={2} />
         </View>
       </Pressable>
+    </View>
+  );
+}
 
-      {expanded && (
-        <Animated.View entering={enter} className="pb-4">
-          {/* depth 2 inside the list surface — the full readout the row stands behind */}
-          <View className="rounded-block bg-surface-raised px-4">
-            {rows.map((row, i) => (
-              <View
-                key={row.label}
-                className={`flex-row items-center justify-between py-3 ${
-                  i === 0 ? '' : 'border-t border-line'
-                }`}
-              >
-                <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
-                <Text
-                  className={
-                    row.word ? 'font-plex-medium text-[15px] text-ink' : 'font-mono text-[15px] text-ink'
-                  }
-                >
-                  {row.value}
-                  {row.suffix ? (
-                    <Text className="font-plex text-[15px] text-muted"> {row.suffix}</Text>
-                  ) : null}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-      )}
+/**
+ * The readout rows. Labels left, value right, hairlines INSIDE one surface.
+ *
+ * `surface-raised` on the sheet's `surface` ground, never the other way round: depth is exactly two
+ * levels and the inner block must be the HIGHER one, or the panel reads as a hole punched in the
+ * sheet (design-system.md §Space & shape).
+ */
+function Readout({ rows }: { rows: ReadoutRow[] }) {
+  return (
+    <View className="rounded-block bg-surface-raised px-5">
+      {rows.map((row, i) => (
+        <View
+          key={row.label}
+          className={`flex-row items-center justify-between py-3.5 ${
+            i === 0 ? '' : 'border-t border-line'
+          }`}
+        >
+          <Text className="font-plex text-[15px] text-muted">{row.label}</Text>
+          <Text
+            className={
+              row.word
+                ? 'font-plex-medium text-[15px] text-ink'
+                : 'font-mono text-[15px] text-ink'
+            }
+          >
+            {row.value}
+            {row.suffix ? (
+              <Text className="font-plex text-[15px] text-muted"> {row.suffix}</Text>
+            ) : null}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -193,12 +206,40 @@ export default function History() {
   const c = useCopy();
   const detections = useDetections();
   const reducedMotion = useReducedMotion();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const sheet = useRef<BottomSheet>(null);
+  /**
+   * One detent. A detail sheet has one job and a peek state would only show the heading of it;
+   * two detents earn their keep on the officer map, where the ground behind the sheet IS content.
+   */
+  const snapPoints = useMemo(() => ['58%'], []);
+  const open = useCallback((id: string) => {
+    setOpenId(id);
+    sheet.current?.snapToIndex(0);
+  }, []);
+  /**
+   * The scrim. Opacity is interpolated from the sheet's own position rather than toggled, so the
+   * log behind it dims as the sheet rises instead of flashing. `disappearsOnIndex={-1}` is what
+   * makes it leave with the sheet.
+   */
+  const backdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.5}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
 
   // Store order is insertion order; the log reads newest-first regardless.
   const ordered = [...detections].sort(
     (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
   );
+  const openDetection = ordered.find((d) => d.id === openId) ?? null;
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
@@ -248,14 +289,7 @@ export default function History() {
             {/* the log is one filled surface; the rules are dividers inside it */}
             <View className="rounded-block bg-surface px-5">
               {ordered.map((d, i) => (
-                <Row
-                  key={d.id}
-                  detection={d}
-                  first={i === 0}
-                  expanded={expandedId === d.id}
-                  onPress={() => setExpandedId((cur) => (cur === d.id ? null : d.id))}
-                  reducedMotion={reducedMotion}
-                />
+                <Row key={d.id} detection={d} first={i === 0} onPress={() => open(d.id)} />
               ))}
             </View>
           </ScrollView>
@@ -288,6 +322,51 @@ export default function History() {
         </View>
       </View>
       <TabBar />
+
+      {/* ── the detail sheet ──────────────────────────────────────────────────
+          Mounted once at screen level and fed whichever row was tapped, rather than one sheet per
+          row: a list of twelve detections would otherwise mount twelve sheets, each with its own
+          animation state, to show one.
+
+          Dark ground, `block` radius, no shadow — design-system.md bans shadows on dark, so the
+          sheet separates from the log by SURFACE LEVEL (`surface-raised` over `bg`) plus the
+          scrim, which is exactly the elevation rule the rest of the app follows. */}
+      <BottomSheet
+        ref={sheet}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose
+        onClose={() => setOpenId(null)}
+        backdropComponent={backdrop}
+        animateOnMount={!reducedMotion}
+        handleIndicatorStyle={{
+          width: 56,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: tokens.colors.line,
+        }}
+        backgroundStyle={{
+          backgroundColor: tokens.colors.surface,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+        }}
+      >
+        <BottomSheetScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
+          {openDetection ? (
+            <>
+              <View className="flex-row items-center gap-2 pb-4">
+                {openDetection.species === 'aedes' && (
+                  <View className="h-2 w-2 rounded-full bg-alert" />
+                )}
+                <Text className="font-plex-semibold text-[20px] text-ink">
+                  {openDetection.species === 'aedes' ? c.history.aedes : c.history.notAedes}
+                </Text>
+              </View>
+              <Readout rows={readoutRows(openDetection, c)} />
+            </>
+          ) : null}
+        </BottomSheetScrollView>
+      </BottomSheet>
     </SafeAreaView>
   );
 }

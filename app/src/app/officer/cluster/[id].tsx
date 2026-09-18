@@ -1,8 +1,10 @@
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { ChevronLeft } from 'lucide-react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft } from 'lucide-react-native';
+
 import tokens from '../../../../tailwind.tokens.js';
 
 import { Basemap, MAP_ATTRIBUTION } from '@/components/Basemap';
@@ -101,6 +103,8 @@ function FloatLabel({
   viewportWidth,
   reserveTop = 0,
   className,
+  onPress,
+  accessibilityLabel,
   children,
 }: {
   at: Point;
@@ -112,6 +116,12 @@ function FloatLabel({
    */
   reserveTop?: number;
   className: string;
+  /**
+   * Makes the label a control. Labels are `pointerEvents="none"` by default — they float over a map
+   * and must not eat taps meant for it — so only a label that genuinely does something opts in.
+   */
+  onPress?: () => void;
+  accessibilityLabel?: string;
   children: React.ReactNode;
 }) {
   const [size, setSize] = useState<Size | null>(null);
@@ -132,16 +142,34 @@ function FloatLabel({
    * unmounting discards the measurement and the component would oscillate.
    */
   const clears = !size || top >= reserveTop;
+  const measure = (e: LayoutChangeEvent) =>
+    setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height });
+
+  /**
+   * The POSITIONED element stays a plain `View` whether or not the label is interactive, and a
+   * Pressable goes inside it. Making the outer element the Pressable looks equivalent and is not:
+   * it loses the shrink-to-content width that `left` is computed against, so the pill stretched the
+   * full width of the map and the measurement it re-fed itself was then wrong for good.
+   */
   return (
     <View
-      onLayout={(e) =>
-        setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
-      }
-      pointerEvents="none"
-      className={className}
+      onLayout={measure}
+      pointerEvents={onPress ? 'auto' : 'none'}
       style={{ position: 'absolute', left, top, opacity: size && clears ? 1 : 0 }}
     >
-      {children}
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          className={className}
+          style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
+        >
+          {children}
+        </Pressable>
+      ) : (
+        <View className={className}>{children}</View>
+      )}
     </View>
   );
 }
@@ -156,6 +184,32 @@ export default function ClusterDetail() {
   const ack = useAcknowledgement();
   const [map, setMap] = useState<Size | null>(null);
   const [sheetH, setSheetH] = useState(SHEET_H_FALLBACK);
+  const sheet = useRef<BottomSheet>(null);
+  /**
+   * Peek and full, as fractions of the screen.
+   *
+   * Sized to what each one actually REVEALS, not to round numbers: peek clears the area row and the
+   * block strip and stops there, full adds the directive and its button. The first pass used
+   * 34%/68% and both detents were taller than the whole content, so "full" was identical to "peek"
+   * with more empty sheet under it — a second detent that changes nothing is worse than one detent,
+   * because the grabber then promises something it does not deliver.
+   *
+   * Percentages, not pixels, so the split holds at 390 and at 430.
+   */
+  const snapPoints = useMemo(() => ['20%', '36%'], []);
+  /**
+   * The map is fitted to the band the sheet leaves VISIBLE, so it has to know the sheet's height.
+   * A sheet reports its POSITION (distance from the container top) as `onChange`'s second argument;
+   * the height is what remains below it. Without this the cluster sits optically centred at one
+   * detent and half-swallowed at the other.
+   */
+  const onSheetChange = useCallback(
+    (_index: number, position: number) => {
+      const h = (map?.height ?? 0) - position;
+      if (h > 0) setSheetH(h);
+    },
+    [map?.height],
+  );
   // Bottom edge of the reserved top band, measured off the chrome that occupies it (the legend on
   // the left, the rain pill on the right). Monotonic max over both, so it converges after layout
   // instead of oscillating, and it tracks whichever pill is actually taller in the current language.
@@ -369,10 +423,16 @@ export default function ClusterDetail() {
               );
             })}
 
-            {/* the cluster itself — the only red label on the map */}
+            {/* The cluster itself — the only red label on the map, and the way INTO the directive.
+                Tapping a value pill to open the detail over the map is the interaction
+                `docs/design/inspiration/mapcluster-1.png` is built on; here it pulls the sheet from
+                peek to full, so the officer goes from "where" to "what to do" in one tap without
+                hunting for the grabber. */}
             <FloatLabel
               at={hotTop}
               viewportWidth={visible.width}
+              onPress={() => sheet.current?.snapToIndex(1)}
+              accessibilityLabel={c.officer.countHours(area.count, activeCluster.windowHours)}
               className={`flex-row items-center gap-2 rounded-pill px-2.5 py-1 ${TONE_BG[area.tone]}`}
             >
               <Text className="font-plex-semibold text-[11px] text-o-bg">{area.name}</Text>
@@ -445,12 +505,56 @@ export default function ClusterDetail() {
           </>
         ) : null}
 
-        {/* ── the directive sheet, riding over the map ────────────────────────── */}
-        <View
-          onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-          className="rounded-t-card border-t border-o-line bg-o-bg px-5 pb-5 pt-4"
-          style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+        {/* ── the directive sheet, riding over the map ──────────────────────────
+            A real sheet now, not a docked panel. Two detents, peek and full — two beat three
+            (research-2026-mobile.md §6). PEEK shows who and where: the area, its count, and the
+            block strip the truck actually enters. FULL adds the directive and the signature.
+
+            That split is the point. An officer scanning the map wants the SHAPE of the cluster
+            first and the instruction second, so the map keeps two thirds of the screen until they
+            ask for the rest — which is what `docs/design/inspiration/mapcluster-1.png` does. */}
+        <BottomSheet
+          ref={sheet}
+          index={0}
+          snapPoints={snapPoints}
+          onChange={onSheetChange}
+          enablePanDownToClose={false}
+          handleIndicatorStyle={{
+            // 56×6 at radius 3 — the cited grabber (research-2026-mobile.md §6). Token, never hex.
+            width: 56,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: tokens.colors['o-line'],
+          }}
+          backgroundStyle={{
+            backgroundColor: tokens.colors['o-bg'],
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+          }}
+          style={{
+            // The officer ground is LIGHT, so the one sanctioned soft shadow applies here
+            // (design-system.md §Space & shape: max `0 1px 3px rgba(21,24,29,.08)`). On the dark
+            // citizen ground a shadow reads as glow and is banned outright.
+            //
+            // `boxShadow`, not the `shadow*` props: react-native-web deprecates those, and on a
+            // sheet that is on screen for the whole officer sequence a console-deprecation storm
+            // is the kind of noise that hides a real warning.
+            boxShadow: '0 -1px 3px rgba(21, 24, 29, 0.08)',
+          }}
         >
+          {/*
+            A ScrollView, not a plain View. The directive plus its button is taller than the peek
+            detent, and a plain view simply clips it — the Acknowledge button ran off the bottom of
+            the screen at peek, which is worse than not showing it. Scrolling also lets the sheet be
+            dragged open OR the content pulled up, which is what the gesture on a real sheet does.
+
+            Padding is on `contentContainerStyle` rather than a className: NativeWind's className
+            does not reach through @gorhom's components, and a silently-dropped `px-5` is why the
+            area name sat flush against the screen edge on the first pass.
+          */}
+          <BottomSheetScrollView
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          >
           <View className="flex-row items-baseline justify-between">
             <View className="flex-row items-center gap-2">
               <View
@@ -516,7 +620,8 @@ export default function ClusterDetail() {
               </Text>
             </View>
           )}
-        </View>
+          </BottomSheetScrollView>
+        </BottomSheet>
       </View>
     </SafeAreaView>
   );

@@ -12,6 +12,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } f
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import '../global.css';
 
@@ -33,5 +34,11 @@ export default function RootLayout() {
   if (loaded) SplashScreen.hideAsync();
   if (!loaded) return null;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // GestureHandlerRootView must wrap the whole app for @gorhom/bottom-sheet's pan to reach it.
+  // Without it the sheet renders and simply never responds to a drag — no error, no warning.
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }} />
+    </GestureHandlerRootView>
+  );
 }
