@@ -47,9 +47,7 @@
       "@siteed/audio-studio",
       [
         "react-native-maps",
-        {
-          "androidGoogleMapsApiKey": "AIzaSyBuw2G0IcMXH68RmfhaYI5LO7ClU6oqvVk"
-        }
+        {}
       ]
     ],
     "experiments": {

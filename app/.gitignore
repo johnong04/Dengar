@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# secrets — injected via app.config.js, never committed
+.env
