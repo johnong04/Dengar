@@ -179,7 +179,48 @@ def cmd_eval(a):
                                         zero_division=0, labels=[0, 1]))
             f_file = f1_score(fy, fp, average="macro", zero_division=0)
 
+    # --- miscalibration, or blindness? ---------------------------------------
+    # 0 of 113 could mean the signal is present but the decision boundary sits in
+    # the wrong place in this domain (a threshold fixes that) or that the features
+    # are simply absent from phone audio (only retraining fixes that). AUC settles
+    # it: it asks whether aedes windows score HIGHER than not_aedes at all,
+    # independently of where the boundary is.
+    g = mo & (medp >= a.med_floor)
+    print("\n-- P(aedes) distribution on MED-gated windows")
+    for c, lab in ((0, "TRUE aedes    "), (1, "TRUE not_aedes")):
+        v = mscp[g & (cls == c)]
+        if len(v):
+            print(f"   {lab} n={len(v):5d}  " +
+                  "  ".join(f"p{q}={np.percentile(v, q):.3f}"
+                            for q in (1, 5, 25, 50, 75, 95, 99)))
+
+    best_t = best_f = auc = None
+    if (g & (cls == 0)).sum() and (g & (cls == 1)).sum():
+        yy, pp = cls[g], mscp[g]
+        grid = np.arange(0.002, 0.999, 0.002)
+        sc = [f1_score(yy, (pp >= t).astype(int) ^ 1, average="macro",
+                       zero_division=0) for t in grid]
+        i = int(np.argmax(sc))
+        best_t, best_f = float(grid[i]), float(sc[i])
+        print(f"\n   best reachable by MOVING THE THRESHOLD ALONE: {best_f:.4f} "
+              f"at P(aedes) >= {best_t:.3f}  (the 0.5 default gave {f_med:.4f})")
+        try:
+            from sklearn.metrics import roc_auc_score
+            auc = float(roc_auc_score((yy == 0).astype(int), pp))
+            verdict = ("SIGNAL PRESENT, boundary misplaced — retrain or recalibrate"
+                       if auc > 0.70 else
+                       "WEAK signal — threshold alone will not rescue it"
+                       if auc > 0.55 else
+                       "NO usable signal in this domain — the features do not transfer")
+            print(f"   AUC {auc:.4f}  (0.5 = no signal, 1.0 = perfectly separable)"
+                  f"\n   => {verdict}")
+        except Exception as e:
+            print(f"   AUC n/a ({e})")
+
     summary = {"source": a.source, "recordings": len(files), "windows": len(rows),
+               "msc_auc": None if auc is None else round(auc, 4),
+               "msc_best_threshold": None if best_t is None else round(best_t, 4),
+               "msc_best_threshold_macro_f1": None if best_f is None else round(best_f, 4),
                "aedes_recordings": cnt[0],
                "med_macro_f1": round(med_f1, 4),
                "med_fire_rate_on_mosquito": round(float((medp[mo] >= a.med_floor).mean()), 4),
