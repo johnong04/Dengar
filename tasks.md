@@ -58,6 +58,27 @@ Shipped model, 53-run sweep, 2026-09-04: **msc macro-F1 0.825** (precision 0.820
 - [ ] M7 three demo clips (clean Aedes / non-Aedes / correctly-abstaining noisy)
 - [ ] M8 stretch: real in-browser inference on Expo web, behind `classify()`
 
+### Run: phone-mic validation (2026-09-18) — the assumption the product rests on
+
+Every number so far is on HumBugDB Tascam field recordings. The product runs on phones. That
+gap is the largest unverified assumption in the project, and Abuzz is the only way to close it.
+
+- [x] A1 `ml/abuzz.py` — Dryad API downloader (no manual step; the earlier "manual only" claim
+      was wrong), 9 of 20 archives = 437 MB, and an eval that runs the SHIPPED .tflite
+- [ ] A2 run `abuzz.py data` — inventory first, as with HumBugDB. File counts, not minutes.
+- [ ] A3 run `abuzz.py eval` — the first honest phone-mic number. **Expect a large drop;
+      cross-dataset scores usually fall hard. That is the real number, not a bug.**
+- [ ] A4 only after A3 is recorded: split Abuzz BY RECORDING, fold part into training, keep the
+      rest held out. Costs no model size — unlike the YAMNet route.
+- [ ] A5 (fallback, only if A4 falls short) pretrained audio embeddings, YAMNet or BEATs.
+      Storage 1.45 MB -> ~4-15 MB, compute same order. Unmeasured; an EAS build is the only proof.
+
+Known defect in Abuzz, from HumBugDB's own paper: "no labels to timestamp mosquito events in
+files where mosquito sound was only sporadic". A file labelled *Aedes aegypti* may be mostly
+silence, so window-level labels are noisy. `eval` therefore gates on MED first and judges MSC
+only where a mosquito is audible — the app's own two-stage flow — and prints the ungated number
+alongside so the gating cannot hide anything.
+
 ### The two upgrades — both now CLOSED, neither needed
 
 1. ~~ImageNet-pretrained MobileNetV2~~ **measured and lost, on all three tasks**
