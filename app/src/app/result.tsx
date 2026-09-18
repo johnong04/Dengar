@@ -368,9 +368,18 @@ function Detected({
                   accessibilityLabel={c.common.backToCapture}
                   className="min-h-[44px] justify-center pr-6 active:opacity-70"
                 >
-                  <Text className="font-plex-medium text-[15px] text-verdict-aedes-soft">
-                    ← {c.result.back}
-                  </Text>
+                  <View className="flex-row items-center gap-1">
+                    {/* `verdict-aedes-soft` as a literal: an SVG stroke is a prop, and this is the
+                        one palette that only exists on the drench. */}
+                    <ChevronLeft
+                      size={18}
+                      color={tokens.colors['verdict-aedes-soft']}
+                      strokeWidth={2}
+                    />
+                    <Text className="font-plex-medium text-[15px] text-verdict-aedes-soft">
+                      {c.result.back}
+                    </Text>
+                  </View>
                 </Pressable>
                 <Text className="font-mono text-[12px] text-verdict-aedes-soft">{stamp}</Text>
               </View>

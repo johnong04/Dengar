@@ -417,12 +417,15 @@ export default function OfficerHome() {
                 >
                   {w.count}
                 </Text>
-                <Text
-                  className={`text-right font-mono text-[11px] ${TONE_TEXT[w.tone]}`}
-                  style={{ width: 30 }}
-                >
-                  {w.delta}
-                </Text>
+                {/* The delta wears the same filled pill as the KPI strip above, so one visual
+                    grammar states "change against the previous window" everywhere on this screen —
+                    and so the figure reads as a delta rather than as a second, smaller count.
+                    `docs/design/inspiration/fleetmanagement-1.jpg` does the same thing. */}
+                <View className="rounded-pill bg-o-surface px-1.5 py-[1px]">
+                  <Text className={`text-right font-mono text-[11px] ${TONE_TEXT[w.tone]}`}>
+                    {w.delta}
+                  </Text>
+                </View>
                 <ChevronRight size={18} color={tokens.colors['o-muted']} strokeWidth={2} />
               </Pressable>
             </Link>

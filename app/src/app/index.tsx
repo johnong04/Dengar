@@ -1,4 +1,5 @@
 import { Link, router } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -14,10 +15,16 @@ import type { Verdict } from '@/inference/gating';
 import { createLevelSource, type LevelSource } from '@/lib/audioLevel';
 import { useConnectivity } from '@/lib/connectivity';
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { riskOf } from '@/lib/risk';
 import { useDetections } from '@/store/detections';
 import { isOnboarded } from '@/store/onboarding';
+import { watchAreas } from '@/data/district';
+import tokens from '../../tailwind.tokens.js';
 
 const CAPTURE_SECONDS = 5.0;
+
+/** The citizen's own neighbourhood — the same seeded home area `/area` opens on. */
+const HOME_AREA_ID = 'taman-melati';
 const SAMPLE_RATE = 16000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -42,6 +49,13 @@ export default function Capture() {
   const reducedMotion = useReducedMotion();
   const detections = useDetections();
   const online = useConnectivity();
+
+  /**
+   * The citizen's own neighbourhood and its current band. Same seeded source and same `riskOf`
+   * as /area, so the footer row and the screen it links to cannot disagree.
+   */
+  const home = watchAreas.find((w) => w.id === HOME_AREA_ID) ?? watchAreas[0];
+  const risk = riskOf(c)[home.tone];
 
   // Session token: bumping it invalidates every async continuation of the previous session
   // (level-source resolution, classify result). This is what makes cancel and double-press safe.
@@ -228,11 +242,39 @@ export default function Capture() {
           )}
         </View>
 
+        {/* ── the foot ──────────────────────────────────────────────────
+
+            This was ~150 px of empty ground between the tally and one grey link — the screen's
+            worst feature at 390 and plan §diagnosis 6's "fill the empty space on capture".
+
+            It is filled with the neighbourhood's state, not with decoration: the one thing a
+            citizen standing in their kitchen at 11 pm would want next to "listen", and the
+            natural way into /area. The word comes from `lib/risk.ts`, the same function /area
+            reads, so the two screens cannot state different bands for the same night.
+
+            Language check (specs §2, binding): this reports what has been RECORDED in a named
+            neighbourhood. It does not say `nearby`, does not imply the phone is sensing anything
+            around it, and does not survey or scan. */}
+        {home ? (
+          <Link href="/area" asChild>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`${home.name} — ${risk.word}`}
+              className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-block bg-surface px-4 active:opacity-70"
+            >
+              <View className={`h-2 w-2 rounded-full ${risk.dot}`} />
+              <Text className="flex-1 font-plex-medium text-[15px] text-ink">{home.name}</Text>
+              <Text className={`font-plex-semibold text-[15px] ${risk.text}`}>{risk.word}</Text>
+              <ChevronRight size={16} color={tokens.colors.line} strokeWidth={2} />
+            </Pressable>
+          </Link>
+        ) : null}
+
         {/* static-node mode (specs §2's secondary capture) — one quiet line, never a second CTA */}
         <Link href="/node/setup" asChild>
           <Pressable
             accessibilityRole="link"
-            className="mb-4 min-h-[44px] items-center justify-center active:opacity-70"
+            className="mb-3 min-h-[44px] items-center justify-center active:opacity-70"
           >
             <Text className="font-plex text-[15px] text-muted">{c.capture.nodeInvite}</Text>
           </Pressable>

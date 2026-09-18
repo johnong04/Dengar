@@ -14,6 +14,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Basemap, MAP_ATTRIBUTION } from '@/components/Basemap';
+import { riskOf } from '@/lib/risk';
 import { TabBar } from '@/components/TabBar';
 import { type Copy, useCopy } from '@/copy';
 import {
@@ -73,21 +74,6 @@ const MAP_MARGIN = 32;
  * down on web, where the vector style is already dark and this much veil would only blur it.
  */
 const MAP_VEIL = 0.78;
-
-/**
- * Semantic tone → the word a citizen actually wants (design-system.md: "one number, one verdict,
- * one action"). Read off the seeded `tone`, never off an invented count threshold.
- *
- * `alert` does NOT become aedes-red here: red is reserved for a positive Aedes *verdict* on this
- * user's own capture (design-system.md rule 5). A neighbourhood risk band is not a verdict, so an
- * elevated area wears `caution` and a clear one wears `ok`. The word carries the level; the colour
- * carries only elevated-vs-clear.
- */
-const riskOf = (c: Copy): Record<Tone, { word: string; text: string; dot: string }> => ({
-  alert: { word: c.area.riskRaised, text: 'text-caution', dot: 'bg-caution' },
-  caution: { word: c.area.riskWatch, text: 'text-caution', dot: 'bg-caution' },
-  neutral: { word: c.area.riskLow, text: 'text-ok', dot: 'bg-ok' },
-});
 
 /**
  * The prevention set. Standard dengue source-reduction advice — nothing here is a figure, so

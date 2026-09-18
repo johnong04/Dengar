@@ -160,9 +160,13 @@ export function Basemap(props: BasemapProps) {
         <div ref={host} style={{ position: 'absolute', inset: 0 }} />
       </View>
 
-      {/* Vector tiles arrive already dark (or already light), so the veil that the raster needed is
-          a fraction of its former self — enough to seat the ground behind the data layer, not
-          enough to wash the street names out again. */}
+      {/* THE VEIL, ALL BUT GONE.
+          The raster needed 0.78 on the citizen surface because OSM ships a daylight palette that
+          fights every warm token on a night screen. A vector dark style is already that screen's
+          ground, so the same veil would only be blurring a map that is already the right colour —
+          and blurring it was the defect this whole item set out to fix (plan §diagnosis 2:
+          "washed out, low zoom, unreadable street names").
+          What is left is the minimum that seats the ground behind the data layer. */}
       {painted && veil > 0 ? (
         <View
           pointerEvents="none"
@@ -173,7 +177,7 @@ export function Basemap(props: BasemapProps) {
             top: 0,
             right: 0,
             bottom: 0,
-            opacity: Math.min(veil, theme === 'dark' ? 0.35 : 0.12),
+            opacity: Math.min(veil, theme === 'dark' ? 0.12 : 0.06),
           }}
         />
       ) : null}
