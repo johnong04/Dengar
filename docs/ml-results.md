@@ -122,6 +122,81 @@ maximises macro-F1 on validation (0.30 for `msc`). The app's 0.70 in `gating.ts`
 quantity. They are not comparable, and the tuning was worth +0.004 anyway. `gating.ts` is
 unchanged and should stay that way.
 
+## Phone-microphone validation — measured 2026-09-19. READ BEFORE ANY SLIDE.
+
+Every score above is measured on HumBugDB's Tanzania/Tascam field recordings. The product runs
+on phone microphones, so that gap was the project's largest untested claim. It is now tested.
+
+Test set: **3,169 HumBugDB recordings made on phones** (Alcatel 4009X / itel A16) — 113 *Aedes*,
+2,361 not-*Aedes*, 695 background. `dengar.py`'s rig filter excluded every one of them from
+training, so there is **zero leakage**. 113 *Aedes* recordings is larger than the 89 the model
+was trained on.
+
+| | Trained-domain (Tascam) | **Phone microphone** |
+|---|---|---|
+| **MED** — is a mosquito present? | 0.964 | **0.879** — transfers |
+| **MSC** — is it *Aedes*? | 0.825 | **0.484** — does not transfer |
+
+```
+MED on phone audio                     MSC on phone audio (MED-gated)
+                 predicted                            predicted
+            mosq   background                      aedes  not_aedes
+true mosq   2577      299            true aedes        0       110
+true bkgd    513     3399            true not_aedes   14      2453
+  mosquito recall 0.896                 AEDES RECALL 0.000  — 0 of 113
+  background recall 0.869              not_aedes recall 0.994
+```
+
+### What this means, stated plainly
+
+**MED survives the microphone change.** 0.879 across a different phone, country and sample rate,
+with no retraining. The detection-and-abstain layer is genuinely validated on phone audio.
+
+**MSC does not survive it at all.** Not a degradation — a collapse. It found **zero of 113**
+*Aedes* recordings and answered "not_aedes" to essentially everything. On a 113-against-2,763
+split that reads as 95% accuracy and is worthless, which is exactly why macro-F1 is the headline
+and accuracy is not.
+
+### What may and may not be claimed
+
+**May be claimed:**
+- On-device mosquito detection, offline, validated across microphones (MED, 0.879).
+- *Aedes* species identification at 0.825 macro-F1 **on the recording rig it was trained on**.
+- That we tested our own premise and found its limit.
+
+**May NOT be claimed, in the deck, the narration or the Q&A:**
+- That species identification works on a phone. **It is measured, and it does not.**
+- Any *Aedes* figure without naming the recording domain it came from.
+
+### The line to say
+
+*"We validated the two stages separately. Detection transfers across microphones — 0.88 on phone
+recordings the model never saw. Species identification does not: on that same phone audio it
+found none of the 113 Aedes recordings. It holds at 0.83 only on the equipment it was trained on.
+We know that because we tested it rather than assumed it, and closing that gap needs phone-recorded
+Aedes training data, which the public datasets barely contain — 113 recordings worldwide is what
+we could find."*
+
+That is a stronger position than a single unqualified number. The failure is specific, measured,
+and has a named fix.
+
+### Why it fails, and what would fix it
+
+Two candidates, needing different fixes, and `phone_eval.py` now reports the AUC that separates
+them — above ~0.70 the signal is present and the decision boundary is misplaced; near 0.5 the
+features are absent from phone audio entirely.
+
+The likely causes, in order:
+1. **Clip length.** The phone *Aedes* clips are 0.05–2 s, tiled up to the contract's 5 s. Tiling
+   splices in a periodic discontinuity the model never saw in training.
+2. **Sample rate.** Phone audio is 8 kHz against 44.1 kHz training material.
+3. **Microphone response and a different colony.** Real, but neither would produce 0 of 113 alone.
+
+The fix is phone-domain training data, not a bigger model — which is why the YAMNet route was
+never the first answer.
+
+---
+
 ## band-SNR — measured, and deliberately not shipped
 
 The third gate (specs.md §4) was measured and **does not work**, so it is not shipping. Values

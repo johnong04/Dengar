@@ -74,8 +74,12 @@ gap is the largest unverified assumption in the project, and Abuzz is the only w
       genuine domain shift: different mic, country, colony, 8 kHz vs 44.1 kHz. Free, no download
       beyond the 4 GB we already fetch. Weakness: clips are 0.05-2 s, tiled to the contract's
       5 s, so it tests the microphone shift cleanly and duration realism less so.
-- [ ] A3 run `phone_eval.py eval --source humbug-phone` — the first honest phone-mic number.
-      **Expect a large drop; cross-domain scores usually fall hard. That is the real number.**
+- [x] A3 **RUN 2026-09-19. MED transfers, MSC does not.** MED 0.879 on 3,169 phone recordings
+      (vs 0.964 in domain). MSC 0.484 — **0 of 113 Aedes found**, it answered not_aedes to
+      everything. Not a degradation, a collapse. Full write-up and the permitted/forbidden claims
+      are in `docs/ml-results.md`; the deck must not say species ID works on a phone.
+- [ ] A3c run the AUC diagnostic (commit 2298414) — separates "boundary misplaced" from "features
+      absent". One 10-minute cell; it decides whether a threshold or retraining is the fix.
 - [ ] A3b optional, stronger: Abuzz via manual browser download, then `--source abuzz --dir`
 - [ ] A4 only after A3 is recorded: split Abuzz BY RECORDING, fold part into training, keep the
       rest held out. Costs no model size — unlike the YAMNet route.
