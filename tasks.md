@@ -63,11 +63,20 @@ Shipped model, 53-run sweep, 2026-09-04: **msc macro-F1 0.825** (precision 0.820
 Every number so far is on HumBugDB Tascam field recordings. The product runs on phones. That
 gap is the largest unverified assumption in the project, and Abuzz is the only way to close it.
 
-- [x] A1 `ml/abuzz.py` — Dryad API downloader (no manual step; the earlier "manual only" claim
-      was wrong), 9 of 20 archives = 437 MB, and an eval that runs the SHIPPED .tflite
-- [ ] A2 run `abuzz.py data` — inventory first, as with HumBugDB. File counts, not minutes.
-- [ ] A3 run `abuzz.py eval` — the first honest phone-mic number. **Expect a large drop;
-      cross-dataset scores usually fall hard. That is the real number, not a bug.**
+- [x] A1 `ml/phone_eval.py` — two sources, one evaluator, runs the SHIPPED .tflite
+- [x] A1b **Dryad is behind Anubis**, a proof-of-work anti-scraping wall. The download is NOT
+      scriptable and will not be bypassed — the operator put it there deliberately. My two
+      earlier claims ("manual only", then "fully scriptable") were both wrong; the metadata
+      API is open, the file endpoints are not.
+- [x] A1c **Pivot: HumBugDB already contains the test set.** 113 *Aedes* recordings on an
+      Alcatel 4009X, 2,361 not_aedes, 695 background — every one excluded from training by the
+      RIG filter, so zero leakage. Comparable in size to the 89 recordings we trained on, and a
+      genuine domain shift: different mic, country, colony, 8 kHz vs 44.1 kHz. Free, no download
+      beyond the 4 GB we already fetch. Weakness: clips are 0.05-2 s, tiled to the contract's
+      5 s, so it tests the microphone shift cleanly and duration realism less so.
+- [ ] A3 run `phone_eval.py eval --source humbug-phone` — the first honest phone-mic number.
+      **Expect a large drop; cross-domain scores usually fall hard. That is the real number.**
+- [ ] A3b optional, stronger: Abuzz via manual browser download, then `--source abuzz --dir`
 - [ ] A4 only after A3 is recorded: split Abuzz BY RECORDING, fold part into training, keep the
       rest held out. Costs no model size — unlike the YAMNet route.
 - [ ] A5 (fallback, only if A4 falls short) pretrained audio embeddings, YAMNet or BEATs.
