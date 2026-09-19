@@ -304,6 +304,13 @@ export const ms: Copy = {
   },
 
   officer: {
+    /**
+     * Bar peranan pada laman utama pegawai — `roleLabel` menyatakan paparan mana anda berada,
+     * `exitToCitizen` ialah jalan keluar. Lihat nota penuh dalam `en.ts`.
+     */
+    roleLabel: 'Pegawai kesihatan',
+    exitToCitizen: 'Paparan orang awam',
+
     kpiDetections: 'Pengesanan',
     kpiClusters: 'Kelompok',
     kpiNodes: 'Nod',

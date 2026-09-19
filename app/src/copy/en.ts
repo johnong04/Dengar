@@ -295,6 +295,18 @@ export const en = {
   },
 
   officer: {
+    /**
+     * The role bar on the officer home. `roleLabel` states which surface you are on; `exitToCitizen`
+     * is the way out. Both exist because the officer surface was a DEAD END — you could reach it
+     * from History and never get back (John, 2026-09-19).
+     *
+     * The exit is deliberately ONE control on the officer home, not a tab: a government dashboard
+     * sitting beside History in the citizen shell would say the two audiences are peers, and the
+     * whole design rests on them not being (see the same argument in `history.tsx`).
+     */
+    roleLabel: 'Health officer',
+    exitToCitizen: 'Citizen view',
+
     kpiDetections: 'Detections',
     kpiClusters: 'Clusters',
     kpiNodes: 'Nodes',

@@ -1,7 +1,7 @@
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bug, ChevronRight, MapPin, Radio, Truck } from 'lucide-react-native';
+import { Bug, ChevronLeft, ChevronRight, MapPin, Radio, Truck } from 'lucide-react-native';
 import tokens from '../../../tailwind.tokens.js';
 
 import { DirectiveRecord } from '@/components/DirectiveRecord';
@@ -102,6 +102,19 @@ function StateDot({ state }: { state: DirectiveState }) {
   );
 }
 
+/**
+ * Leave the officer surface for the citizen app.
+ *
+ * `back()` when there is somewhere to go back to — that returns to History with its scroll position
+ * intact, which is where the officer view is entered from. `replace('/')` otherwise, because the
+ * officer home is reachable by URL directly (that is how the board and the demo open it), and a
+ * `back()` with nothing behind it leaves the user exactly as stranded as before.
+ */
+function exitToCitizen() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
 /** KPI key → its label. `data/district.ts` emits the key; the words live in `src/copy/`. */
 function kpiLabel(key: string, c: Copy): string {
   return key === 'detections'
@@ -130,6 +143,36 @@ export default function OfficerHome() {
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── role bar ──────────────────────────────────────────────────────
+
+            The officer surface was a DEAD END: History pushes you here and nothing brought you
+            back (John, 2026-09-19). This bar is the door, and it is the ONLY one — every other
+            officer screen already backs out to this one.
+
+            A bar rather than a tab, on purpose. Putting a government dashboard beside History in
+            the citizen shell would state that the two audiences are peers, and the whole design
+            rests on them not being (the same argument is written out in `history.tsx`). One
+            deliberate entry, one deliberate exit, each naming the surface on the other side.
+
+            It also makes the surface self-describing: a judge who lands here can see WHICH view
+            they are looking at, which the district name alone never said. */}
+        <View className="flex-row items-center justify-between border-b border-o-line bg-o-surface px-2 py-1">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={c.officer.exitToCitizen}
+            onPress={exitToCitizen}
+            className="min-h-[44px] flex-row items-center gap-1 rounded-card px-2"
+            style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+          >
+            <ChevronLeft size={18} color={tokens.colors['o-primary']} strokeWidth={2} />
+            <Text className="font-plex-medium text-[13px] text-o-primary">
+              {c.officer.exitToCitizen}
+            </Text>
+          </Pressable>
+          <Text className="px-3 font-plex-medium text-[10px] uppercase tracking-[1.2px] text-o-muted">
+            {c.officer.roleLabel}
+          </Text>
+        </View>
         {/* ── district header ───────────────────────────────────────────── */}
         <View className="flex-row items-center justify-between border-b border-o-line px-5 pb-3 pt-3">
           <View className="flex-row items-center gap-2">
