@@ -1,15 +1,10 @@
 import { forwardRef } from 'react';
-import { Pressable, type PressableProps, type View, type ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import { type PressableProps, type View, type ViewStyle } from 'react-native';
+import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { APressable } from '@/components/animated';
 import { DUR, EASE } from '@/lib/motion';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * A control that acknowledges being touched.
@@ -28,10 +23,11 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  *
  * ── Two things that are easy to get wrong here ──────────────────────────────────────────────────
  *
- * 1. GEOMETRY GOES ON `style`, NEVER ON `className`. react-native-web drops className on a
- *    reanimated Animated.View, so a transform expressed as a Tailwind class silently does nothing
- *    in the browser — which is the shipping target. This is already written down as a hard
- *    constraint in the UI-overhaul plan; it applies to every animated component, including this one.
+ * 1. IT IS BUILT ON `APressable`, NOT ON `Animated.createAnimatedComponent(Pressable)`.
+ *    react-native-web drops `className` on an unregistered animated component, so a control keeps
+ *    its behaviour and silently loses its background, padding and layout — on the shipping target
+ *    only. `components/animated.tsx` registers it with NativeWind's `cssInterop`; that file carries
+ *    the full account.
  *
  * 2. Reduced motion removes the SCALE, not the feedback. A user who asked for less motion still
  *    needs to know their tap registered, so the opacity change stays.
@@ -54,7 +50,7 @@ export const Press = forwardRef<View, PressProps>(function Press(
   }));
 
   return (
-    <AnimatedPressable
+    <APressable
       ref={ref as never}
       onPressIn={(e) => {
         p.value = withTiming(1, { duration: DUR.press, easing: EASE.standard });
@@ -68,6 +64,6 @@ export const Press = forwardRef<View, PressProps>(function Press(
       style={[style, animated]}
     >
       {children}
-    </AnimatedPressable>
+    </APressable>
   );
 });

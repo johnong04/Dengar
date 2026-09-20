@@ -1,6 +1,10 @@
 import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AView } from '@/components/animated';
+import { Press } from '@/components/Press';
+import { DUR, STAGGER, staggerDelay, useCountUp, useEnter, useRamp } from '@/lib/motion';
 import { Bug, ChevronLeft, ChevronRight, MapPin, Radio, Truck } from 'lucide-react-native';
 import tokens from '../../../tailwind.tokens.js';
 
@@ -43,6 +47,25 @@ const HEAT_LABEL_W = 42;
 const PAST_DAYS = trend.detections.length; // 14
 const FUTURE_DAYS = trend.projectedCases.length; // +14…+21 d inclusive
 
+/**
+ * How long the projected series waits before it starts growing, ms after the measured series began.
+ * Set so the measured run has fully swept past `today` first — the lead-time claim, told as
+ * sequence rather than as a caption.
+ */
+const PROJECTION_DELAY = 420;
+
+/**
+ * The chart's own clock, ms — long enough for the last projected bar to finish growing.
+ * Everything on the chart is expressed as a delay in ms and divided by this, so one number moves
+ * the whole sequence and no bar can drift out of the run.
+ */
+const CHART_MS = PROJECTION_DELAY + STAGGER * 8 + DUR.enter;
+
+/** When the heat grid starts, ms. After the chart it explains, before the watch rows. */
+const HEAT_DELAY = 560;
+/** When the watch list starts, ms. Last: it is the screen's tail, not its point. */
+const WATCH_DELAY = 720;
+
 /** Semantic tone → officer token. Kept literal so the Tailwind scanner sees every class. */
 const TONE_TEXT: Record<Tone, string> = {
   alert: 'text-o-alert',
@@ -70,6 +93,41 @@ function LegendKey({ label, swatch }: { label: string; swatch: React.ReactNode }
       <Text className="font-plex text-[11px] text-o-muted">{label}</Text>
     </View>
   );
+}
+
+/**
+ * A chart bar that grows to its height instead of appearing at it.
+ *
+ * `p` is a shared 0→1 ramp owned by the screen, NOT one ramp per bar — 28 bars each running their
+ * own `requestAnimationFrame` loop is 28 re-render storms racing each other, and the series ends up
+ * visibly ragged. One ramp, one clock, and each bar reads its own slice of it through `delay`.
+ *
+ * The bar grows from the BASELINE: `height` is what animates, with the row bottom-aligned. Scaling
+ * a full-height bar on Y would stretch its rounded cap into an ellipse on the way up.
+ */
+function GrowBar({
+  height,
+  p,
+  delay,
+  total,
+  className,
+  style,
+}: {
+  height: number;
+  p: number;
+  delay: number;
+  total: number;
+  className: string;
+  style: { width: number } & Record<string, unknown>;
+}) {
+  // This bar's slice of the shared ramp. `p` is 0→1 across CHART_MS, and `delay` is milliseconds,
+  // so both ends must be converted into the SAME unit before they are compared — the first version
+  // of this divided a millisecond delay by `DUR.count + total`, mixing ms with a bar count, and the
+  // series crawled in at roughly half speed for reasons no screenshot would ever explain.
+  const start = delay / CHART_MS;
+  const span = DUR.enter / CHART_MS;
+  const local = Math.max(0, Math.min(1, (p - start) / span));
+  return <View className={className} style={{ ...style, height: Math.max(1, height * local) }} />;
 }
 
 function Spark({ data, tone }: { data: readonly number[]; tone: Tone }) {
@@ -132,10 +190,37 @@ function kpiLabel(key: string, c: Copy): string {
  */
 const KPI_ICON = { detections: Bug, clusters: MapPin } as const;
 
+/**
+ * A KPI figure that counts to its value.
+ *
+ * `data/district.ts` emits these as STRINGS, because one of them is "23/26" — a pair, not a number.
+ * So the figure is parsed out, counted, and re-inserted into its own string. A KPI that cannot be
+ * parsed (anything without a leading number) renders as-is rather than as `NaN`: an invented figure
+ * on this surface is the class of defect that disqualifies the submission, and "counts up" is not
+ * worth risking it.
+ */
+function KpiValue({ value, delay }: { value: string; delay: number }) {
+  const m = /^(\d+(?:\.\d+)?)/.exec(value);
+  const target = m ? Number(m[1]) : NaN;
+  const shown = useCountUp(Number.isFinite(target) ? target : 0, { delay });
+  const text = Number.isFinite(target)
+    ? value.replace(m![1], String(Math.round(shown)))
+    : value;
+  return <Text className="font-mono-medium text-[22px] text-o-ink">{text}</Text>;
+}
+
 export default function OfficerHome() {
   const c = useCopy();
   const ack = useAcknowledgement();
   const feed = useAlertFeed();
+  const entering = useEnter();
+  /**
+   * ONE clock for the whole chart — both series and the heat grid read their slice of it. The
+   * measured bars start immediately; the projection waits until the measured run has swept past,
+   * because the claim the chart makes is "this LEADS that" and a projection that grows alongside
+   * its own cause states the opposite.
+   */
+  const chart = useRamp({ delay: 180, duration: CHART_MS });
 
   return (
     <SafeAreaView className="flex-1 bg-o-bg">
@@ -203,10 +288,13 @@ export default function OfficerHome() {
                 </Text>
               </View>
               <View className="mt-1 flex-row items-baseline gap-1.5">
-                <Text className="font-mono-medium text-[22px] text-o-ink">{k.value}</Text>
-                <View className="rounded-pill bg-o-surface px-1.5 py-[1px]">
+                <KpiValue value={k.value} delay={staggerDelay(i, kpis.length)} />
+                <AView
+                  entering={entering({ delay: 260 + staggerDelay(i, kpis.length), rise: 4 })}
+                  className="rounded-pill bg-o-surface px-1.5 py-[1px]"
+                >
                   <Text className={`font-mono text-[11px] ${TONE_TEXT[k.tone]}`}>{k.delta}</Text>
-                </View>
+                </AView>
               </View>
             </View>
           ))}
@@ -224,7 +312,10 @@ export default function OfficerHome() {
             <DirectiveRecord ack={ack} />
           </View>
         ) : (
-          <View className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5">
+          <AView
+            entering={entering({ delay: 140, duration: DUR.hero, rise: 14 })}
+            className="mx-5 mt-4 flex-row items-center gap-3 rounded-card bg-o-primary px-4 py-3.5"
+          >
             {/* The directive IS "send a fogging truck" (specs §1). The glyph states the action the
                 card commands; the words state where and by when. */}
             <Truck size={22} color={tokens.colors['o-bg']} strokeWidth={1.75} />
@@ -238,17 +329,16 @@ export default function OfficerHome() {
                 <Text className="font-mono text-[12px]">{activeCluster.blocks}</Text>
               </Text>
             </View>
-            <Pressable
+            <Press
               accessibilityRole="button"
               onPress={acknowledge}
               className="min-h-[44px] shrink-0 justify-center rounded-card bg-o-bg px-4"
-              style={({ pressed }) => (pressed ? { opacity: 0.85 } : null)}
             >
               <Text className="text-center font-plex-semibold text-[15px] text-o-primary">
                 {c.officer.acknowledge}
               </Text>
-            </Pressable>
-          </View>
+            </Press>
+          </AView>
         )}
 
         {/* ── the 14-day chart ──────────────────────────────────────────── */}
@@ -307,19 +397,21 @@ export default function OfficerHome() {
                   className="flex-1 items-center justify-end"
                   style={{ height: CHART_H }}
                 >
-                  <View
+                  <GrowBar
+                    p={chart}
+                    delay={staggerDelay(i, PAST_DAYS)}
+                    total={PAST_DAYS}
                     className="absolute bottom-0 rounded-t-[2px] bg-o-primary-wash"
-                    style={{
-                      width: RAIN_W,
-                      height: Math.max(1, (trend.rainMm[i] / trend.peak.rainMm) * CHART_H),
-                    }}
+                    height={Math.max(1, (trend.rainMm[i] / trend.peak.rainMm) * CHART_H)}
+                    style={{ width: RAIN_W }}
                   />
-                  <View
+                  <GrowBar
+                    p={chart}
+                    delay={staggerDelay(i, PAST_DAYS)}
+                    total={PAST_DAYS}
                     className="rounded-t-[2px] bg-o-alert"
-                    style={{
-                      width: DET_W,
-                      height: Math.max(2, (d / trend.peak.detections) * CHART_H),
-                    }}
+                    height={Math.max(2, (d / trend.peak.detections) * CHART_H)}
+                    style={{ width: DET_W }}
                   />
                 </View>
               ))}
@@ -350,13 +442,18 @@ export default function OfficerHome() {
                   className="flex-1 items-center justify-end"
                   style={{ height: CHART_H }}
                 >
-                  <View
+                  {/* The projection grows only AFTER the measured run has swept past. The whole
+                      claim of this chart is that detections LEAD cases by 14–21 days; a projection
+                      rising alongside its own cause would state the opposite in motion while the
+                      bracket states it in words. */}
+                  <GrowBar
+                    p={chart}
+                    delay={PROJECTION_DELAY + staggerDelay(i, FUTURE_DAYS)}
+                    total={FUTURE_DAYS}
                     className="rounded-t-[2px] border border-o-alert bg-o-alert-ghost"
-                    style={{
-                      width: GHOST_W,
-                      // 0.94 leaves the 14–21 d bracket air above the peak.
-                      height: Math.max(4, (c / trend.peak.projectedCases) * CHART_H * 0.94),
-                    }}
+                    // 0.94 leaves the 14–21 d bracket air above the peak.
+                    height={Math.max(4, (c / trend.peak.projectedCases) * CHART_H * 0.94)}
+                    style={{ width: GHOST_W }}
                   />
                 </View>
               ))}
@@ -393,16 +490,29 @@ export default function OfficerHome() {
                 >
                   {heat.rows[r]}
                 </Text>
-                {row.map((v, c) =>
+                {/* Cells arrive by COLUMN, not by row — the grid's x axis is days, so a sweep
+                    left-to-right is the same gesture the chart above it just made. Sweeping down
+                    the rows instead would cut across time and read as unrelated. */}
+                {row.map((v, ci) =>
                   v === 0 ? (
-                    <View
-                      key={c}
+                    <AView
+                      key={ci}
+                      entering={entering({
+                        delay: HEAT_DELAY + staggerDelay(ci, heat.cols.length),
+                        rise: 0,
+                        duration: DUR.state,
+                      })}
                       className="flex-1 rounded-[3px] bg-o-surface"
                       style={{ height: HEAT_CELL_H }}
                     />
                   ) : (
-                    <View
-                      key={c}
+                    <AView
+                      key={ci}
+                      entering={entering({
+                        delay: HEAT_DELAY + staggerDelay(ci, heat.cols.length),
+                        rise: 0,
+                        duration: DUR.state,
+                      })}
                       className="flex-1 rounded-[3px] bg-o-alert"
                       style={{ height: HEAT_CELL_H, opacity: 0.14 + (v / heat.max) * 0.86 }}
                     />
@@ -438,16 +548,19 @@ export default function OfficerHome() {
               </Pressable>
             </Link>
           </View>
-          {feed.map(({ area: w, state }) => (
-            <Link
+          {feed.map(({ area: w, state }, i) => (
+            <AView
               key={w.id}
+              entering={entering({ delay: WATCH_DELAY + staggerDelay(i, feed.length) })}
+            >
+            <Link
               href={{ pathname: '/officer/cluster/[id]', params: { id: w.id } }}
               asChild
             >
-              <Pressable
+              <Press
                 accessibilityRole="link"
+                scaleFrom={0.985}
                 className="min-h-[52px] flex-row items-center gap-3 border-b border-o-line py-3"
-                style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
               >
                 <StateDot state={state} />
                 <Text className="font-plex-medium text-[13px] text-o-ink" style={{ width: 84 }}>
@@ -470,8 +583,9 @@ export default function OfficerHome() {
                   </Text>
                 </View>
                 <ChevronRight size={18} color={tokens.colors['o-muted']} strokeWidth={2} />
-              </Pressable>
+              </Press>
             </Link>
+            </AView>
           ))}
         </View>
       </ScrollView>
