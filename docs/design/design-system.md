@@ -158,17 +158,61 @@ those failed AA at 4.27:1 and 4.36:1 on `o-surface`. The new values clear AA on 
 - Depth is exactly two levels per surface (`surface`/`surface-raised`, `-sunken`/`-raised` on the
   drench). A third level is a defect.
 
-### Motion
+### Motion — AMENDED 2026-09-21 (John). The entrance ban is LIFTED.
 
-- State transitions 180 ms ease-out. Verdict reveal 240 ms.
-- Capture pulse (as built, slice 2 — recorded 2026-08-12): the one ambient animation in the app.
-  Idle breathes at 1.6 s (scale 1→1.12, opacity .35→0 — the invitation); listening tightens to
-  0.9 s, 1→1.06 — faster and smaller reads as "live mic". Analyzing holds the rings still: the mic
-  is closed, so nothing on screen may claim liveness.
-- **Color and depth never animate.** Tints, drench stops and surface levels are static; motion
-  conveys state only, and a shifting ground reads as instability on a field instrument.
-- Reduced motion: rings hold static (single ring at rest opacity); the level meter still moves —
-  it is data, not decoration. Reveals become crossfades.
+**The rule this replaces**, in force 2026-08-12 → 2026-09-21, was: *"Motion 150–250 ms, ease-out,
+conveys state only. No page-load choreography."* It is repealed. Do not reinstate it.
+
+**Why it was right, and why it stopped being right.** It was written for a citizen using a field
+instrument at 11 pm, one-handed, at the moment a mosquito found them — someone who wants the answer
+now and will open the app five times in an evening. Under those conditions an entrance animation is
+latency wearing a costume. That reasoning is sound and it is still the reasoning for everything in
+the "stays banned" list below.
+
+It stopped being right because it is not the only audience. **A judge's entire experience is: open a
+screen, look, leave.** They never press capture, never drag a sheet, never trigger a state change —
+and "a screen opens" was precisely the one moment the old rule forbade anything from happening. The
+app therefore presented as a still image to the only audience that decides whether it ships. The old
+rule was working exactly as designed, against an audience it was never designed for.
+
+John, 2026-09-21, verbatim: *"UI aesthetics and polished design is way more important than above,
+and i do not care about the above consideration and rule, so remove it from now on and from future
+CC session."* The lift is deliberate, informed, and permanent — the repeat-use cost above was put to
+him in full before he called it.
+
+#### The distinction that replaces it
+
+| | Rule |
+|---|---|
+| **Entrance motion** — content arrives ONCE, fast, then sits still: chart bars rising, a figure counting to 7, the verdict washing in | **Allowed. Encouraged.** |
+| **Ambient motion** — never stops, means nothing: looping shimmer, drifting gradients, decorative pulsing | **Still banned.** Permanent noise, and it is what makes an instrument read as a toy. |
+
+The difference is that entrance motion ends. A screen that *builds* is not a screen that *fidgets*.
+
+#### What binds now
+
+- **One motion system, never per-screen timings.** `src/lib/motion.ts` owns every duration, curve
+  and stagger. A screen that invents its own is a defect in the same way an invented spacing scale
+  is — that rule did not change.
+- **Curves** (M3): standard `cubic-bezier(0.2, 0, 0, 1)`; entering uses emphasized-decelerate
+  `cubic-bezier(0.05, 0.7, 0.1, 1)`; exits use emphasized-accelerate `cubic-bezier(0.3, 0, 0.8, 0.15)`.
+- **Budget.** State transitions 180 ms. A screen's whole entrance completes in **≤ 900 ms**, and the
+  verdict set piece is the only thing allowed to reach it. If an entrance ever feels like *waiting*,
+  it is too slow — cut it, do not ease it.
+- **Input is never blocked by an entrance.** The capture button works on the first frame, mid-animation.
+  This is the non-negotiable half of the lift: polish may not cost the user a tap.
+- **An animation must say something.** The chart building states the shape of the trend; the figure
+  counting states that it is a live reading. Motion that says nothing does not ship.
+- **Capture pulse** (as built, slice 2 — recorded 2026-08-12) is the one sanctioned ambient loop:
+  idle breathes at 1.6 s (scale 1→1.12, opacity .35→0 — the invitation); listening tightens to
+  0.9 s, 1→1.06 — faster and smaller reads as "live mic". Analyzing holds the rings still, because
+  the mic is closed and nothing on screen may claim liveness. That last point is a HONESTY rule, not
+  a motion rule, and it survives the amendment untouched.
+- **Colour and depth may now animate on ENTRANCE only** — the drench washing in is the point of the
+  drench. They may never animate at rest: a ground that shifts while you read it reads as instability.
+- **Reduced motion still wins, always.** `prefers-reduced-motion` collapses every entrance to a
+  crossfade and holds the rings static. The level meter keeps moving — it is data, not decoration.
+  This was not part of what was lifted and is not negotiable.
 
 ### Warm revision — what changed from the board, and why (2026-08-12, slice 11)
 
