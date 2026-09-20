@@ -180,6 +180,32 @@ we could find."*
 That is a stronger position than a single unqualified number. The failure is specific, measured,
 and has a named fix.
 
+### The diagnostic, and why the conclusion is narrower than it looks
+
+**AUC 0.182.** Not 0.5. AUC below 0.5 means *inverted*: the model scores *Aedes* systematically
+**lower** than non-*Aedes* on this data. Flip the output and it would score 0.82. That is strong
+structure pointing the wrong way, which is a different thing from absent features.
+
+Moving the threshold cannot rescue it — the best any cut-off achieves is 0.489 against the 0.488
+default.
+
+**A confound in the test set, found after the fact.** In this phone subset the *Aedes* clips
+average **0.42 s** (113 clips, 0.8 min total) while the not-*Aedes* clips average **3.2 s**
+(2,361 clips, 126 min). `load_clip` tiles anything shorter than 5 s up to the contract length, so
+*Aedes* clips are repeated roughly 12 times and not-*Aedes* roughly 1.6 times. **Clip duration,
+and therefore tiling periodicity, is correlated with the class label.** The model may be reading
+that artifact rather than the microphone change.
+
+So the defensible statement is narrower than "species identification does not transfer to phones":
+
+- **Established:** MSC fails completely on this set of phone recordings. 0 of 113. Nothing about
+  phone species identification may be claimed.
+- **Not established:** whether the cause is the microphone, the 8 kHz sample rate, or our own
+  tiling. This test cannot separate them.
+
+Resolving it needs phone *Aedes* clips long enough not to be tiled, which this subset does not
+contain — Abuzz's longer field recordings would, and that is the reason to go back for them.
+
 ### Why it fails, and what would fix it
 
 Two candidates, needing different fixes, and `phone_eval.py` now reports the AUC that separates

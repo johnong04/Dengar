@@ -78,8 +78,24 @@ gap is the largest unverified assumption in the project, and Abuzz is the only w
       (vs 0.964 in domain). MSC 0.484 — **0 of 113 Aedes found**, it answered not_aedes to
       everything. Not a degradation, a collapse. Full write-up and the permitted/forbidden claims
       are in `docs/ml-results.md`; the deck must not say species ID works on a phone.
-- [ ] A3c run the AUC diagnostic (commit 2298414) — separates "boundary misplaced" from "features
-      absent". One 10-minute cell; it decides whether a threshold or retraining is the fix.
+- [x] A3c **AUC 0.182 — INVERTED, not absent.** Aedes scores systematically LOWER than
+      not_aedes; flipped it would be 0.82. No threshold helps (best 0.489 vs 0.488 default).
+      **Confound found afterwards:** Aedes phone clips average 0.42 s against 3.2 s for
+      not_aedes, and `load_clip` tiles short clips up to 5 s, so Aedes windows are repeated ~12x
+      and not_aedes ~1.6x. Duration is correlated with class. The failure is real; the CAUSE is
+      unresolved between microphone shift and our own tiling artifact.
+
+**PHASE PLAN — status after 2026-09-21**
+
+| Phase | What | Status |
+|---|---|---|
+| 1 | Test the shipped models on phone audio | **DONE.** MED transfers (0.879). MSC does not (0.484, 0 of 113, AUC 0.182 inverted). |
+| 1b | Diagnose the MSC failure | **DONE, inconclusive by design.** Test-set confound blocks attribution. |
+| 2 | Train on phone-domain data | **NOT STARTED.** Needs Abuzz's longer clips; this subset is too short to use. |
+| 3 | Pretrained audio embeddings (YAMNet/BEATs) | **NOT STARTED, and not next.** The evidence points at data and preprocessing, not architecture. |
+
+Nothing in phases 2-3 is needed for the deck or the video. The deck needs only what phase 1
+established, and `docs/ml-results.md` carries the permitted and forbidden claims.
 - [ ] A3b optional, stronger: Abuzz via manual browser download, then `--source abuzz --dir`
 - [ ] A4 only after A3 is recorded: split Abuzz BY RECORDING, fold part into training, keep the
       rest held out. Costs no model size — unlike the YAMNet route.

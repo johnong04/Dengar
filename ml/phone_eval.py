@@ -207,11 +207,16 @@ def cmd_eval(a):
         try:
             from sklearn.metrics import roc_auc_score
             auc = float(roc_auc_score((yy == 0).astype(int), pp))
-            verdict = ("SIGNAL PRESENT, boundary misplaced — retrain or recalibrate"
+            verdict = ("SIGNAL PRESENT, boundary misplaced — recalibrate"
                        if auc > 0.70 else
-                       "WEAK signal — threshold alone will not rescue it"
+                       "WEAK signal — a threshold alone will not rescue it"
                        if auc > 0.55 else
-                       "NO usable signal in this domain — the features do not transfer")
+                       "NO usable signal — scores are unrelated to the label"
+                       if auc >= 0.45 else
+                       "INVERTED — aedes scores LOWER than not_aedes. Strong structure "
+                       "pointing the wrong way, which usually means a confound in the "
+                       "test set rather than an absent feature. Check whether clip "
+                       "duration correlates with class before concluding anything.")
             print(f"   AUC {auc:.4f}  (0.5 = no signal, 1.0 = perfectly separable)"
                   f"\n   => {verdict}")
         except Exception as e:
