@@ -48,7 +48,8 @@
       [
         "react-native-maps",
         {}
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": true,
