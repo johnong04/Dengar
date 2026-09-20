@@ -4,6 +4,10 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
+
+import { AView } from '@/components/animated';
+import { Press } from '@/components/Press';
+import { DUR, EASE, staggerDelay, useCountUp, useRamp } from '@/lib/motion';
 import tokens from '../../tailwind.tokens.js';
 
 import { type Copy, useCopy } from '@/copy';
@@ -15,7 +19,7 @@ import {
   type Species,
   type SpeciesDetail,
 } from '@/inference/gating';
-import { DRENCH_STOPS } from '@/lib/drench';
+import { DRENCH_BANDS, DRENCH_STOPS } from '@/lib/drench';
 import { formatFix, useCoarseLocation } from '@/lib/coarseLocation';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 import { add as addDetection } from '@/store/detections';
@@ -283,6 +287,34 @@ type DetectedParams = { species?: string; confidence?: string; detail?: string }
  * The detected verdict. Aedes drenches the surface verdict-red (the one place red is allowed);
  * not_aedes stays on the quiet dark ground — red is rationed to the vector alone.
  */
+/**
+ * The confidence readout: the figure counting and the bar filling, on one clock.
+ *
+ * `pct` is the FINAL value and is the only thing this component is allowed to state — it counts to
+ * it and stops. An intermediate figure is never rounded up past the real one on the way, because a
+ * frame showing 94% for a 91% verdict is an invented figure, and specs §9 does not care that it
+ * only existed for 16 ms.
+ */
+function ConfidenceGauge({ pct, context, body }: { pct: number; context: string; body: number }) {
+  // Starts a third of the way into the body beat: the word and the sentence land first, then the
+  // evidence for them.
+  const p = Math.max(0, Math.min(1, (body - 0.3) / 0.6));
+  const shown = Math.floor(pct * p);
+  return (
+    <>
+      <View className="mt-8 flex-row items-baseline gap-3">
+        <Text className="font-mono-medium text-[30px] text-warm-white">{shown}%</Text>
+        <AView style={{ opacity: Math.max(0, Math.min(1, (body - 0.45) / 0.35)) }}>
+          <Text className="font-plex text-[15px] text-verdict-aedes-soft">{context}</Text>
+        </AView>
+      </View>
+      <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
+        <View className="h-full rounded-pill bg-warm-white" style={{ width: `${pct * p}%` }} />
+      </View>
+    </>
+  );
+}
+
 function Detected({
   params,
   reducedMotion,
@@ -328,6 +360,26 @@ function Detected({
   // the surface appears as a plain crossfade-equivalent cut.
   const reveal = reducedMotion ? undefined : FadeIn.duration(240);
 
+  /**
+   * THE VERDICT SET PIECE — the one thing in the app allowed to spend the full 900 ms budget
+   * (design-system.md §Motion, amended 2026-09-21).
+   *
+   * This screen is the strongest frame in the product and it was three default fades. What lands
+   * now, on one shared clock so nothing can drift:
+   *
+   *   the drench WASHES DOWN — band by band from the top, which is the direction the gradient
+   *     already runs, so the motion states the composition instead of fighting it
+   *   the word arrives on its own beat, after the ground has committed
+   *   the confidence bar fills while the figure counts to the same value on the same easing
+   *   the detail rows and the stakes block follow, staggered
+   *
+   * `wash` drives the ground; `body` drives everything painted on it. Two clocks, because the
+   * ground must be settled before the content starts — content arriving onto a moving background
+   * is what makes a reveal read as chaotic rather than as staged.
+   */
+  const wash = useRamp({ duration: DUR.hero, enabled: !reducedMotion });
+  const body = useRamp({ delay: 240, duration: DUR.verdict - 240, enabled: !reducedMotion });
+
   if (species === 'aedes') {
     const pct = Math.round(confidence! * 100);
     const context = [
@@ -353,9 +405,17 @@ function Detected({
               pointerEvents: 'none',
             }}
           >
-            {DRENCH_STOPS.map((band, i) => (
-              <View key={i} style={{ flex: 1, backgroundColor: band }} />
-            ))}
+            {/* The wash runs TOP TO BOTTOM, the same direction the gradient itself runs, so the
+                motion states the composition rather than cutting across it. Each band is a slice
+                of one shared ramp, never its own animation — 28 independent clocks would arrive
+                ragged and the gradient would visibly band while it settled. */}
+            {DRENCH_STOPS.map((band, i) => {
+              const at = i / (DRENCH_BANDS - 1);
+              const local = Math.max(0, Math.min(1, (wash - at * 0.55) / 0.45));
+              return (
+                <View key={i} style={{ flex: 1, backgroundColor: band, opacity: local }} />
+              );
+            })}
           </View>
 
           <SafeAreaView className="flex-1">
@@ -391,31 +451,50 @@ function Detected({
                   and below turns it into composition. */}
               <View className="flex-1 justify-center">
                 <View className="mt-6">
-                  <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
-                    {c.result.aedesVerdict}
-                  </Text>
-                  <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
-                    {c.result.aedesBody}
-                  </Text>
+                  {/* The word lands: it arrives slightly large and settles, which reads as mass.
+                      Scale on `style` — a transform is geometry and belongs there even on a
+                      registered component, because NativeWind has no class for an arbitrary one. */}
+                  <AView
+                    style={{
+                      opacity: Math.min(1, body / 0.3),
+                      transform: [{ scale: 1.06 - 0.06 * Math.min(1, body / 0.3) }],
+                    }}
+                  >
+                    <Text className="font-plex-bold text-[56px] leading-[60px] text-warm-white">
+                      {c.result.aedesVerdict}
+                    </Text>
+                  </AView>
+                  <AView
+                    style={{
+                      opacity: Math.max(0, Math.min(1, (body - 0.12) / 0.3)),
+                      transform: [
+                        { translateY: 10 * (1 - Math.max(0, Math.min(1, (body - 0.12) / 0.3))) },
+                      ],
+                    }}
+                  >
+                    <Text className="mt-3 font-plex text-[20px] leading-7 text-verdict-aedes-soft">
+                      {c.result.aedesBody}
+                    </Text>
+                  </AView>
 
-                  {/* confidence gauge — a pill on a sunken track, the one number that carries weight */}
-                  <View className="mt-8 flex-row items-baseline gap-3">
-                    <Text className="font-mono-medium text-[30px] text-warm-white">{pct}%</Text>
-                    <Text className="font-plex text-[15px] text-verdict-aedes-soft">{context}</Text>
-                  </View>
-                  <View className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-verdict-aedes-track">
-                    <View
-                      className="h-full rounded-pill bg-warm-white"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </View>
+                  {/* Confidence gauge — a pill on a sunken track, the one number that carries
+                      weight. The bar and the figure run off the SAME clock and the same easing, so
+                      they arrive together; two curves that are nearly identical read as one of them
+                      lagging, which is worse than not animating either. */}
+                  <ConfidenceGauge pct={pct} context={context} body={body} />
 
                   {/* fine-grained heads, recessed — rows exist only when a head reported (specs §6) */}
                   {rows.length > 0 && (
                     <View className="mt-8 rounded-block bg-verdict-aedes-sunken px-5">
                       {rows.map((row, i) => (
-                        <View
+                        <AView
                           key={row.label}
+                          style={{
+                            opacity: Math.max(
+                              0,
+                              Math.min(1, (body - (0.55 + i * 0.06)) / 0.25),
+                            ),
+                          }}
                           className={`flex-row items-center justify-between py-4 ${
                             i === 0 ? '' : 'border-t border-verdict-aedes-line'
                           }`}
@@ -435,46 +514,67 @@ function Detected({
                               {row.suffix}
                             </Text>
                           </Text>
-                        </View>
+                        </AView>
                       ))}
                     </View>
                   )}
 
                   {/* the stakes, raised */}
-                  <View className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4">
+                  <AView
+                    style={{
+                      opacity: Math.max(0, Math.min(1, (body - 0.72) / 0.28)),
+                      transform: [
+                        { translateY: 12 * (1 - Math.max(0, Math.min(1, (body - 0.72) / 0.28))) },
+                      ],
+                    }}
+                    className="mt-4 rounded-block bg-verdict-aedes-raised px-5 py-4"
+                  >
                     <Text className="font-plex-medium text-[13px] uppercase tracking-[0.08em] text-verdict-aedes-soft">
                       {c.result.whyThisMatters}
                     </Text>
                     <Text className="mt-2 font-plex text-[16px] leading-6 text-warm-white">
                       {c.result.aedesStakes}
                     </Text>
-                  </View>
+                  </AView>
                 </View>
               </View>
 
               {/* next move */}
-              <View className="gap-3 pb-4">
-                <Pressable
+              {/* Next move. It arrives LAST but its opacity floors at 1 the moment `body`
+                  completes — and the Pressable underneath is live from the first frame regardless,
+                  because design-system.md §Motion forbids an entrance from costing the user a tap.
+                  A judge who taps Log during the reveal gets the log, not a swallowed press. */}
+              <AView
+                style={{
+                  opacity: Math.max(0, Math.min(1, (body - 0.8) / 0.2)),
+                  transform: [
+                    { translateY: 16 * (1 - Math.max(0, Math.min(1, (body - 0.8) / 0.2))) },
+                  ],
+                }}
+                className="gap-3 pb-4"
+              >
+                <Press
                   onPress={log}
                   disabled={logged}
+                  scaleFrom={0.985}
                   accessibilityRole="button"
-                  className="min-h-[52px] items-center justify-center rounded-pill bg-warm-white py-4 active:opacity-90 disabled:opacity-60"
+                  className="min-h-[52px] items-center justify-center rounded-pill bg-warm-white py-4 disabled:opacity-60"
                 >
                   <Text className="font-plex-semibold text-[17px] text-verdict-aedes-deep">
                     {c.result.logDetection}
                   </Text>
-                </Pressable>
-                <Pressable
+                </Press>
+                <Press
                   onPress={discard}
                   disabled={logged}
                   accessibilityRole="button"
-                  className="min-h-[44px] items-center justify-center py-2 active:opacity-70"
+                  className="min-h-[44px] items-center justify-center py-2"
                 >
                   <Text className="font-plex-medium text-[15px] text-verdict-aedes-soft">
                     {c.result.discard}
                   </Text>
-                </Pressable>
-              </View>
+                </Press>
+              </AView>
             </View>
           </SafeAreaView>
         </Animated.View>
