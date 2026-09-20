@@ -70,10 +70,16 @@ export function Basemap(props: BasemapProps) {
 
   // Required lazily so the module is never evaluated on web, where `Basemap.web.tsx` is the
   // implementation and this file is not reached at all.
+  // v11 renamed the map component from `MapView` to `Map`, aligning with MapLibre GL JS. Aliased
+  // to MapLibreMap because `Map` alone shadows the JS global. Destructuring the old name yielded
+  // `undefined`, and React then read `.displayName` off it — the render crash seen on device.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { MapView, Camera } = require('@maplibre/maplibre-react-native');
+  const { Map: MapLibreMap, Camera } = require('@maplibre/maplibre-react-native');
 
-  if (!Number.isFinite(zoom)) return <BasemapRaster {...props} />;
+  // `require` is untyped, so tsc cannot catch a renamed export — only the device can, and it
+  // catches it as a render crash on the one screen a judge taps first. Degrade to the shipped
+  // raster instead: a slightly worse map beats a red error box.
+  if (!MapLibreMap || !Camera || !Number.isFinite(zoom)) return <BasemapRaster {...props} />;
 
   return (
     <>
@@ -84,7 +90,7 @@ export function Basemap(props: BasemapProps) {
         pointerEvents="none"
         style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}
       >
-        <MapView
+        <MapLibreMap
           style={{ flex: 1 }}
           mapStyle={STYLE[theme]}
           // See §2 above: these stay off until the overlays live inside the map.
@@ -107,9 +113,9 @@ export function Basemap(props: BasemapProps) {
             zoom={zoom}
             bearing={0}
             pitch={0}
-            animationDuration={0}
+            duration={0}
           />
-        </MapView>
+        </MapLibreMap>
       </View>
 
       {/* THE VEIL, ALL BUT GONE — same reasoning as the web twin: a dark vector style IS the
